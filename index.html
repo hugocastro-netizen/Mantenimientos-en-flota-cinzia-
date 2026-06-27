@@ -659,8 +659,22 @@ async function fetchSheetRows(sheetId, sheetName){
   const res = await fetch(gvizUrl(sheetId, sheetName));
   const text = await res.text();
   const json = JSON.parse(text.substring(text.indexOf("{"), text.lastIndexOf("}") + 1));
-  const cols = json.table.cols.map(c => c.label || c.id);
-  return json.table.rows.map(r => {
+  let cols = json.table.cols.map(c => c.label || c.id);
+  let rows = json.table.rows;
+
+  // A veces Google no detecta que la fila 1 son encabezados, y devuelve columnas
+  // genéricas "A","B","C"... En ese caso, tomamos la primera fila de datos como
+  // encabezado real y la sacamos de los resultados.
+  const sinEncabezadoDetectado = json.table.cols.every((c,i) => (c.label||c.id) === c.id);
+  if(sinEncabezadoDetectado && rows.length){
+    cols = json.table.cols.map((c,i) => {
+      const cell = rows[0].c[i];
+      return (cell && cell.v != null) ? String(cell.v) : c.id;
+    });
+    rows = rows.slice(1);
+  }
+
+  return rows.map(r => {
     const obj = {};
     cols.forEach((c, i) => { const cell = r.c[i]; obj[c] = cell ? (cell.f ?? cell.v) : null; });
     return obj;
