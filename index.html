@@ -703,8 +703,9 @@ async function loadRealData(){
   const C = CONFIG.COLUMNS;
   const insp = await fetchSheetRows(CONFIG.SHEETS.inspecciones.id, CONFIG.SHEETS.inspecciones.sheetName);
   console.log("DIAGNÓSTICO Inspecciones — filas leídas:", insp.length);
-  console.log("DIAGNÓSTICO Inspecciones — columnas detectadas:", insp.length ? Object.keys(insp[0]) : "(sin filas)");
-  console.log("DIAGNÓSTICO Inspecciones — primera fila completa:", insp[0]);
+  console.log("DIAGNÓSTICO Inspecciones — columnas:", insp.length ? JSON.stringify(Object.keys(insp[0])) : "(sin filas)");
+  console.log("DIAGNÓSTICO Inspecciones — primera fila:", insp.length ? JSON.stringify(insp[0]) : "(sin filas)");
+  console.log("DIAGNÓSTICO Inspecciones — valor crudo de numero_de_movil en las primeras 5 filas:", JSON.stringify(insp.slice(0,5).map(r => r[CONFIG.COLUMNS.inspecciones.movil])));
 
   const movilesSinMapear = new Set();
   const inspecciones = insp.map(r => {
@@ -724,7 +725,7 @@ async function loadRealData(){
     };
   }).filter(insp => insp.patente); // las que no tienen móvil mapeado se descartan acá (quedan en movilesSinMapear)
 
-  if(movilesSinMapear.size) console.warn("Móviles en Inspecciones sin patente asociada (revisar MOVIL_A_PATENTE):", [...movilesSinMapear]);
+  if(movilesSinMapear.size) console.warn("Móviles en Inspecciones sin patente asociada (revisar MOVIL_A_PATENTE):", JSON.stringify([...movilesSinMapear]));
 
   // Mantenimiento todavía puede no estar conectado (no tenemos esa hoja en vivo): si falla,
   // seguimos igual con km/zona/fotos en vivo, y mantenimiento queda vacío hasta conectarlo.
@@ -1772,6 +1773,7 @@ async function loadAndRender(){
   }
   RAW_DATA = data;
   STATE.vehicles = buildVehicles(data);
+  console.log("DIAGNÓSTICO FINAL — isMock:", isMock, "| vehículos construidos:", STATE.vehicles.length, "| inspecciones recibidas:", (data.inspecciones||[]).length, "| mantenimiento recibido:", (data.mantenimiento||[]).length);
   document.getElementById("modeBadge").textContent = isMock ? "Tu Excel (sin Sheets)" : "Datos en vivo";
   document.getElementById("syncInfo").textContent = "Actualizado " + new Date().toLocaleTimeString("es-AR");
   renderAll();
