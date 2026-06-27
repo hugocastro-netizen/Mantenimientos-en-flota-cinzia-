@@ -659,7 +659,7 @@ async function fetchSheetRows(sheetId, sheetName){
   const res = await fetch(gvizUrl(sheetId, sheetName));
   const text = await res.text();
   const json = JSON.parse(text.substring(text.indexOf("{"), text.lastIndexOf("}") + 1));
-  let cols = json.table.cols.map(c => c.label || c.id);
+  let cols = json.table.cols.map(c => (c.label || c.id).trim());
   let rows = json.table.rows;
 
   // A veces Google no detecta que la fila 1 son encabezados, y devuelve columnas
@@ -669,7 +669,7 @@ async function fetchSheetRows(sheetId, sheetName){
   if(sinEncabezadoDetectado && rows.length){
     cols = json.table.cols.map((c,i) => {
       const cell = rows[0].c[i];
-      return (cell && cell.v != null) ? String(cell.v) : c.id;
+      return ((cell && cell.v != null) ? String(cell.v) : c.id).trim();
     });
     rows = rows.slice(1);
   }
