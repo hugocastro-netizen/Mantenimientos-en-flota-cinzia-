@@ -702,6 +702,9 @@ const MOVIL_A_ZONA = {
 async function loadRealData(){
   const C = CONFIG.COLUMNS;
   const insp = await fetchSheetRows(CONFIG.SHEETS.inspecciones.id, CONFIG.SHEETS.inspecciones.sheetName);
+  console.log("DIAGNÓSTICO Inspecciones — filas leídas:", insp.length);
+  console.log("DIAGNÓSTICO Inspecciones — columnas detectadas:", insp.length ? Object.keys(insp[0]) : "(sin filas)");
+  console.log("DIAGNÓSTICO Inspecciones — primera fila completa:", insp[0]);
 
   const movilesSinMapear = new Set();
   const inspecciones = insp.map(r => {
@@ -764,7 +767,7 @@ async function loadRealData(){
     }
   }catch(e){ console.warn("Todavía no hay hoja de Salud legible:", e); }
 
-  let catalogo = [];
+  let catalogo = CATALOGO_DEFAULT.map(c => ({...c})); // punto de partida; se reemplaza si conectás tu propia hoja
   try{
     if(CONFIG.SHEETS.catalogo.id){
       const cat = await fetchSheetRows(CONFIG.SHEETS.catalogo.id, CONFIG.SHEETS.catalogo.sheetName);
@@ -789,6 +792,27 @@ async function loadRealData(){
 /* =========================================================================
    Datos de ejemplo
    ========================================================================= */
+// Catálogo editable: cada cuántos km se DEBE hacer cada cosa, y en qué bloque aparece.
+// Estos intervalos son valores de referencia — ajustalos desde "Catálogo de mantenimientos"
+// en la barra lateral para que coincidan con tu plan real. Cuando registrás un mantenimiento
+// como hecho, el dashboard usa este número para sugerir el próximo km automáticamente.
+// Se usa como catálogo inicial tanto en modo demo como en modo en vivo (hasta que conectes
+// una hoja de Catalogo_Mantenimiento real).
+const CATALOGO_DEFAULT = [
+  { item:"Embrague",                       intervaloKm:200000, categoria:"motor" },
+  { item:"Bombín Embrague",                intervaloKm:100000, categoria:"motor" },
+  { item:"Lubricentro",                    intervaloKm:10000,  categoria:"motor" },
+  { item:"Rotación de cubiertas",          intervaloKm:10000,  categoria:"neumaticos" },
+  { item:"Cubiertas delanteras",           intervaloKm:50000,  categoria:"neumaticos" },
+  { item:"Cubiertas traseras",             intervaloKm:50000,  categoria:"neumaticos" },
+  { item:"Correas",                        intervaloKm:60000,  categoria:"correas" },
+  { item:"Correa Dentada",                 intervaloKm:90000,  categoria:"correas" },
+  { item:"Pastillas de frenos delanteras", intervaloKm:30000,  categoria:"frenos" },
+  { item:"Pastillas de frenos traseras",   intervaloKm:40000,  categoria:"frenos" },
+  { item:"Rulemán/palier",                 intervaloKm:80000,  categoria:"otros" },
+  { item:"TPM",                            intervaloKm:50000,  categoria:"otros" }
+];
+
 function buildMockData(){
   const today = new Date("2026-06-26");
 
@@ -804,23 +828,7 @@ function buildMockData(){
   ];
 
   // Catálogo editable: cada cuántos km se DEBE hacer cada cosa, y en qué bloque aparece.
-  // Estos intervalos son valores de referencia — ajustalos desde "Catálogo de mantenimientos"
-  // en la barra lateral para que coincidan con tu plan real. Cuando registrás un mantenimiento
-  // como hecho, el dashboard usa este número para sugerir el próximo km automáticamente.
-  const CATALOGO_DEFAULT = [
-    { item:"Embrague",                       intervaloKm:200000, categoria:"motor" },
-    { item:"Bombín Embrague",                intervaloKm:100000, categoria:"motor" },
-    { item:"Lubricentro",                    intervaloKm:10000,  categoria:"motor" },
-    { item:"Rotación de cubiertas",          intervaloKm:10000,  categoria:"neumaticos" },
-    { item:"Cubiertas delanteras",           intervaloKm:50000,  categoria:"neumaticos" },
-    { item:"Cubiertas traseras",             intervaloKm:50000,  categoria:"neumaticos" },
-    { item:"Correas",                        intervaloKm:60000,  categoria:"correas" },
-    { item:"Correa Dentada",                 intervaloKm:90000,  categoria:"correas" },
-    { item:"Pastillas de frenos delanteras", intervaloKm:30000,  categoria:"frenos" },
-    { item:"Pastillas de frenos traseras",   intervaloKm:40000,  categoria:"frenos" },
-    { item:"Rulemán/palier",                 intervaloKm:80000,  categoria:"otros" },
-    { item:"TPM",                            intervaloKm:50000,  categoria:"otros" }
-  ];
+  // (definido arriba, fuera de esta función, para poder reusarlo también en modo en vivo)
 
   // Tu flota real. movil = número de móvil (primera columna de tu Excel).
   // mant[] sigue el orden de ITEMS_MANTENIMIENTO; null = no aplica a ese vehículo.
