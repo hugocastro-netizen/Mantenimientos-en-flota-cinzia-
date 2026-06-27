@@ -1,0 +1,1824 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Control de Flota — Mantenimiento &amp; Inspección</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0F1115;
+    --panel:#161922;
+    --panel-2:#1D212B;
+    --panel-3:#242936;
+    --border:#272C36;
+    --border-strong:#343B49;
+    --text:#E6E8EC;
+    --muted:#8B92A3;
+    --accent:#4C7DFF;
+    --accent-soft:rgba(76,125,255,0.14);
+    --green:#2FB67C;
+    --green-bg:rgba(47,182,124,0.14);
+    --amber:#D9A23B;
+    --amber-bg:rgba(217,162,59,0.14);
+    --red:#E2585A;
+    --red-bg:rgba(226,88,90,0.14);
+    --radius:10px;
+    --mono:'JetBrains Mono', monospace;
+    --sans:'Inter', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg); color:var(--text); font-family:var(--sans); font-size:14px;
+    -webkit-font-smoothing:antialiased; min-height:100vh;
+  }
+  a{color:var(--accent); text-decoration:none;}
+  button, input, select, textarea{font-family:var(--sans);}
+  :focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+
+  .app-shell{display:flex; min-height:100vh;}
+
+  /* ================= SIDEBAR ================= */
+  .sidebar{
+    width:248px; flex:none; background:var(--panel); border-right:1px solid var(--border);
+    padding:20px 16px; display:flex; flex-direction:column; gap:18px;
+    height:100vh; position:sticky; top:0; overflow:hidden;
+  }
+  .brand{padding:2px 4px 6px;}
+  .brand-mark{
+    width:30px; height:30px; border-radius:7px; background:var(--accent-soft); color:var(--accent);
+    display:flex; align-items:center; justify-content:center; margin-bottom:10px;
+  }
+  .brand-title{font-size:14px; font-weight:700; letter-spacing:-0.01em;}
+  .brand-sub{font-size:11.5px; color:var(--muted); margin-top:2px;}
+
+  .side-label{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); font-weight:600; padding:0 4px; margin-bottom:8px;}
+  .filter-list{display:flex; flex-direction:column; gap:2px;}
+  .filter-item{
+    display:flex; align-items:center; gap:9px; padding:7px 8px; border-radius:7px; border:none;
+    background:transparent; color:var(--muted); font-size:13px; font-weight:500; cursor:pointer; text-align:left;
+    width:100%; transition:background .12s, color .12s;
+  }
+  .filter-item:hover{background:var(--panel-2); color:var(--text);}
+  .filter-item.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  .filter-item .dot{width:7px; height:7px; border-radius:50%; flex:none;}
+  .filter-item .count{margin-left:auto; font-family:var(--mono); font-size:11.5px; opacity:.85;}
+
+  .filter-list-scroll{flex:1; min-height:60px; overflow-y:auto; padding-right:2px;}
+  .filter-list-scroll::-webkit-scrollbar{width:5px;}
+  .filter-list-scroll::-webkit-scrollbar-thumb{background:var(--border-strong); border-radius:99px;}
+  .movil-item{font-family:var(--mono); font-size:12px;}
+  .movil-item .movil-plate{color:var(--muted); font-weight:400; margin-left:5px; font-family:var(--sans);}
+  .movil-nested{padding-left:13px; margin:1px 0 6px; border-left:1px solid var(--border-strong); display:flex; flex-direction:column; gap:1px;}
+
+  .actions-block{display:flex; flex-direction:column; gap:8px;}
+  .btn{
+    border:1px solid var(--border); background:var(--panel-2); color:var(--text);
+    padding:9px 12px; border-radius:8px; font-size:13px; font-weight:600;
+    display:inline-flex; align-items:center; justify-content:center; gap:7px; cursor:pointer;
+    transition:background .12s, border-color .12s;
+  }
+  .btn:hover{background:var(--panel-3); border-color:var(--border-strong);}
+  .btn-primary{background:var(--accent); border-color:var(--accent); color:#fff;}
+  .btn-primary:hover{background:#3E6CE0;}
+  .btn-ghost{background:transparent;}
+  .btn-block{width:100%;}
+  .btn-icon{width:14px; height:14px; flex:none;}
+  .btn.spin .btn-icon{animation:spin .6s linear;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .sidebar-footer{margin-top:auto; padding-top:14px; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:8px;}
+  .mode-row{display:flex; align-items:center; justify-content:space-between; font-size:11.5px; color:var(--muted);}
+  .badge-demo{font-family:var(--mono); padding:3px 7px; border-radius:5px; border:1px solid var(--border); background:var(--panel-2); text-transform:uppercase; letter-spacing:.04em; font-size:10px;}
+
+  /* ================= MAIN ================= */
+  .main{flex:1; min-width:0; display:flex; flex-direction:column;}
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between; gap:16px;
+    padding:16px 28px; border-bottom:1px solid var(--border);
+  }
+  .topbar h1{font-size:17px; font-weight:700; margin:0;}
+  .search{
+    display:flex; align-items:center; gap:8px; background:var(--panel); border:1px solid var(--border);
+    border-radius:8px; padding:8px 11px; width:260px;
+  }
+  .search input{background:transparent; border:none; outline:none; color:var(--text); font-size:13px; width:100%;}
+  .search input::placeholder{color:var(--muted);}
+  .search svg{width:15px; height:15px; color:var(--muted); flex:none;}
+
+  .content{padding:24px 28px 60px; max-width:1280px; width:100%;}
+
+  /* ---- KPI stat cards ---- */
+  .kpis{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px;}
+  .kpi-card{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px;}
+  .kpi-card-clickable{cursor:pointer; transition:border-color .12s, background .12s;}
+  .kpi-card-clickable:hover{border-color:var(--accent); background:var(--panel-2);}
+  .full-list-body{max-height:60vh; overflow-y:auto; margin-top:4px;}
+  .kpi-value{font-family:var(--mono); font-size:28px; font-weight:700; line-height:1; color:var(--text);}
+  .kpi-label{font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-top:7px;}
+  .kpi-bar{height:3px; border-radius:999px; background:var(--panel-2); margin-top:13px; overflow:hidden;}
+  .kpi-bar-fill{height:100%; border-radius:999px; transition:width .4s ease;}
+  .kpi-subnote{font-size:11.5px; color:var(--muted); margin:-12px 0 20px;}
+
+  /* ---- Estadística de mantenimientos por ítem (general / por sucursal) ---- */
+  .item-stats{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:14px 18px; margin-bottom:20px;}
+  .item-stats-head{display:flex; justify-content:space-between; align-items:baseline; font-size:12.5px; margin-bottom:9px;}
+  .item-stats-head span:first-child{color:var(--muted);}
+  .item-stats-pct{font-family:var(--mono); font-weight:700; font-size:14px; color:var(--green);}
+  .item-stats-bar{display:flex; height:8px; border-radius:999px; overflow:hidden; background:var(--panel-2);}
+  .item-stats-bar span{display:block; height:100%;}
+  .item-stats-legend{display:flex; gap:16px; flex-wrap:wrap; margin-top:9px; font-size:11.5px; color:var(--muted);}
+  .item-stats-legend .dot{width:7px; height:7px; border-radius:50%; display:inline-block; margin-right:5px;}
+  .item-stats-legend .muted{margin-left:auto;}
+
+  /* ---- Two-panel row ---- */
+  .panel-row{display:grid; grid-template-columns:1.3fr 1fr; gap:14px; margin-bottom:20px;}
+  .panel{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px;}
+  .panel-title{font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); font-weight:700; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between;}
+  .panel-empty{font-size:12.5px; color:var(--muted); padding:10px 0;}
+
+  .list-row{display:flex; align-items:center; gap:11px; padding:9px 0; border-top:1px solid var(--border); cursor:pointer;}
+  .list-row:first-of-type{border-top:none;}
+  .list-row:hover .list-title{color:var(--accent);}
+  .list-rank{font-family:var(--mono); font-size:11px; color:var(--muted); width:14px; flex:none;}
+  .list-plate{font-family:var(--mono); font-weight:700; font-size:12.5px; flex:none; width:80px;}
+  .list-title{flex:1; font-size:12.5px; font-weight:500; min-width:0;}
+  .list-bar-wrap{flex:1.1; height:5px; border-radius:999px; background:var(--panel-2); overflow:hidden; min-width:54px; display:none;}
+  .list-bar{display:block; height:100%; border-radius:999px;}
+  .list-right{font-family:var(--mono); font-size:11.5px; color:var(--muted); flex:none; white-space:nowrap;}
+  .tag-gravedad{font-size:10px; padding:2px 6px; border-radius:5px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; flex:none;}
+
+  @media(min-width:780px){ .list-bar-wrap{display:block;} }
+
+  /* ---- Vehicle grid ---- */
+  .grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(270px,1fr)); gap:14px;}
+  .card{
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    padding:14px 15px 13px; cursor:pointer; border-left:3px solid var(--border); transition:border-color .12s, background .12s;
+  }
+  .card:hover{background:var(--panel-2); border-left-color:var(--accent);}
+  .card.status-green{border-left-color:var(--green);}
+  .card.status-amber{border-left-color:var(--amber);}
+  .card.status-red{border-left-color:var(--red);}
+
+  .card-top{display:flex; justify-content:space-between; align-items:flex-start; gap:8px;}
+  .plate{font-family:var(--mono); font-weight:700; font-size:13.5px; letter-spacing:.02em; background:var(--panel-2); border:1px solid var(--border); border-radius:5px; padding:2px 7px;}
+  .model{font-size:12px; color:var(--muted); margin-top:5px;}
+  .zona-tag{font-size:11px; color:var(--muted); display:flex; align-items:center; gap:4px; margin-top:4px;}
+  .zona-tag svg{width:10px; height:10px;}
+  .status-pill{font-family:var(--mono); font-size:9.5px; letter-spacing:.04em; text-transform:uppercase; padding:3px 8px; border-radius:999px; font-weight:700; flex:none;}
+  .status-pill.status-green{background:var(--green-bg); color:var(--green);}
+  .status-pill.status-amber{background:var(--amber-bg); color:var(--amber);}
+  .status-pill.status-red{background:var(--red-bg); color:var(--red);}
+
+  .km-row{margin:12px 0 9px; display:flex; align-items:baseline; gap:6px;}
+  .km-row .num{font-family:var(--mono); font-size:19px; font-weight:700;}
+  .km-row .unit{font-family:var(--mono); font-size:10.5px; color:var(--muted); text-transform:uppercase;}
+  .last-inspect{font-size:11.5px; color:var(--muted); margin-bottom:11px; display:flex; align-items:center; gap:5px;}
+  .last-inspect.stale{color:var(--amber);}
+  .last-inspect svg{width:12px; height:12px; flex:none;}
+
+  .item-chips{display:flex; flex-wrap:wrap; gap:5px;}
+  .item-chip{font-size:10.5px; padding:3px 7px; border-radius:5px; display:flex; align-items:center; gap:5px; border:1px solid var(--border); color:var(--muted); font-weight:500;}
+  .item-chip .dot{width:6px; height:6px; border-radius:50%; flex:none;}
+  .item-chip.more{border-style:dashed;}
+
+  .empty{text-align:center; padding:50px 20px; color:var(--muted); border:1px dashed var(--border); border-radius:var(--radius); font-size:13px;}
+
+  /* ================= MODALS ================= */
+  .modal-backdrop{
+    position:fixed; inset:0; background:rgba(6,7,10,0.7);
+    display:none; align-items:flex-start; justify-content:center; padding:36px 16px; z-index:50; overflow-y:auto;
+  }
+  .modal-backdrop.open{display:flex;}
+  .modal{background:var(--panel); border:1px solid var(--border); border-radius:14px; max-width:760px; width:100%; padding:22px; position:relative; animation:fadein .12s ease;}
+  .modal.form-modal{max-width:440px;}
+  @keyframes fadein{from{opacity:0;} to{opacity:1;}}
+  .modal-close{position:absolute; top:16px; right:16px; background:var(--panel-2); border:1px solid var(--border); border-radius:7px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; color:var(--muted); cursor:pointer;}
+  .modal h3{margin:0 0 4px; font-size:16px;}
+  .form-hint{font-size:12px; color:var(--muted); margin:0 0 16px;}
+
+  .modal-head{display:flex; justify-content:space-between; align-items:flex-start; gap:16px; padding-right:34px;}
+  .modal-head .model{font-size:13px; color:var(--muted); margin-top:4px;}
+  .modal-head .zona-tag{margin-top:6px;}
+  .modal-meta{display:flex; gap:20px; margin:16px 0 16px; flex-wrap:wrap;}
+  .modal-meta div{font-size:11.5px; color:var(--muted);}
+  .modal-meta strong{display:block; color:var(--text); font-family:var(--mono); font-size:13px; margin-top:2px;}
+
+  .section-label{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:18px 0 9px; font-weight:700; display:flex; align-items:center; justify-content:space-between;}
+  .section-label .link-btn{font-size:11px; color:var(--accent); font-weight:600; cursor:pointer; text-transform:none; letter-spacing:0;}
+
+  .maint-row{display:flex; align-items:center; gap:10px; padding:8px 0; border-top:1px solid var(--border);}
+  .maint-row:first-of-type{border-top:none;}
+  .maint-name{flex:1.2; font-size:12.5px; font-weight:500; min-width:0;}
+  .maint-bar-wrap{flex:1.3; height:6px; border-radius:999px; background:var(--panel-2); overflow:hidden;}
+  .maint-bar{height:100%; border-radius:999px;}
+  .maint-right{font-family:var(--mono); font-size:11.5px; width:120px; text-align:right; flex:none;}
+  .maint-check{
+    width:24px; height:24px; border-radius:6px; border:1px solid var(--border); background:var(--panel-2);
+    display:flex; align-items:center; justify-content:center; color:var(--muted); flex:none; cursor:pointer;
+  }
+  .maint-check:hover{border-color:var(--accent); color:var(--accent);}
+  .maint-check svg{width:13px; height:13px;}
+  .maint-postpone{
+    width:24px; height:24px; border-radius:6px; border:1px solid var(--border); background:var(--panel-2);
+    display:flex; align-items:center; justify-content:center; color:var(--muted); flex:none; cursor:pointer;
+  }
+  .maint-postpone:hover{border-color:#9D8CFF; color:#9D8CFF;}
+  .maint-postpone svg{width:13px; height:13px;}
+  .tag-postergado{
+    font-size:10px; padding:2px 7px; border-radius:5px; font-weight:700; text-transform:uppercase; letter-spacing:.03em;
+    background:rgba(157,140,255,0.15); color:#9D8CFF; flex:none; cursor:help;
+  }
+
+  .photo-row{display:flex; gap:10px; margin-top:4px;}
+  .photo-box{width:120px; height:84px; border-radius:8px; border:1px solid var(--border); background:var(--panel-2); display:flex; align-items:center; justify-content:center; color:var(--muted); flex:none;}
+  .photo-img{width:120px; height:84px; border-radius:8px; border:1px solid var(--border); object-fit:cover; flex:none; background:var(--panel-2);}
+
+  /* ---- Galería de fotos (2 rondas x 4 ángulos) ---- */
+  .foto-ronda{margin-bottom:12px;}
+  .foto-ronda:last-child{margin-bottom:0;}
+  .foto-ronda-label{font-size:11.5px; color:var(--muted); font-weight:600; margin-bottom:7px;}
+  .foto-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:8px;}
+  .foto-slot{display:flex; flex-direction:column; gap:5px; align-items:center;}
+  .photo-img-sm{width:100%; height:64px; border-radius:7px; border:1px solid var(--border); object-fit:cover; background:var(--panel-2);}
+  .photo-box-sm{width:100%; height:64px; border-radius:7px; border:1px solid var(--border); background:var(--panel-2); display:flex; align-items:center; justify-content:center; color:var(--muted);}
+  .foto-slot-label{font-size:10px; color:var(--muted); text-align:center;}
+  @media(max-width:480px){ .foto-grid{grid-template-columns:repeat(2,1fr);} }
+  .history-row{display:flex; justify-content:space-between; font-size:11.5px; color:var(--muted); padding:6px 0; border-top:1px solid var(--border);}
+  .history-row:first-of-type{border-top:none;}
+  .history-row span:first-child{color:var(--text); font-family:var(--mono);}
+
+  .rep-row{padding:9px 0; border-top:1px solid var(--border); font-size:12px;}
+  .rep-row:first-of-type{border-top:none;}
+  .rep-row .rep-top{display:flex; justify-content:space-between; gap:8px; margin-bottom:3px;}
+  .rep-row .rep-date{font-family:var(--mono); color:var(--muted); font-size:11px;}
+  .rep-row .rep-desc{color:var(--text);}
+
+  /* ---- Tire diagram ---- */
+  .tire-wrap{display:flex; gap:18px; align-items:flex-start; flex-wrap:wrap;}
+  .tire-legend{display:flex; flex-direction:column; gap:8px; font-size:11.5px; color:var(--muted); padding-top:6px;}
+  .tire-legend .leg-item{display:flex; align-items:center; gap:7px;}
+  .tire-legend .leg-dot{width:9px; height:9px; border-radius:50%; flex:none;}
+
+  /* ---- Resumen de salud (ficha médica) ---- */
+  .health-summary{display:flex; gap:10px; margin:14px 0 18px;}
+  .hs-item{
+    flex:1; background:var(--panel-2); border:1px solid var(--border); border-radius:10px;
+    padding:12px 14px; display:flex; align-items:center; gap:9px;
+  }
+  .hs-dot{width:10px; height:10px; border-radius:50%; flex:none;}
+  .hs-num{font-family:var(--mono); font-size:20px; font-weight:700;}
+  .hs-label{font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.03em;}
+
+  /* ---- Bloques de mantenimiento por categoría ---- */
+  .cat-block{background:var(--panel-3); border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:10px;}
+  .cat-block:last-child{margin-bottom:0;}
+  .cat-head{display:flex; align-items:center; gap:9px; margin-bottom:4px;}
+  .cat-icon{width:26px; height:26px; border-radius:7px; background:var(--accent-soft); color:var(--accent); display:flex; align-items:center; justify-content:center; flex:none;}
+  .cat-icon svg{width:15px; height:15px;}
+  .cat-title{font-size:12.5px; font-weight:700;}
+  .cat-count{margin-left:auto; font-size:11px; font-weight:600;}
+
+  /* ---- Tarjetas de salud de componentes ---- */
+  .salud-cards{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;}
+  .salud-card{
+    flex:1; min-width:200px; background:var(--panel-3); border:1px solid var(--border); border-radius:10px;
+    padding:11px 12px; display:flex; align-items:center; gap:10px;
+  }
+  .salud-icon{width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; flex:none;}
+  .salud-icon svg{width:17px; height:17px;}
+  .salud-icon.s-bueno{background:var(--green-bg); color:var(--green);}
+  .salud-icon.s-regular{background:var(--amber-bg); color:var(--amber);}
+  .salud-icon.s-malo{background:var(--red-bg); color:var(--red);}
+  .salud-icon.s-sindato{background:var(--panel-2); color:var(--muted);}
+  .salud-info{flex:1; min-width:0;}
+  .salud-info .salud-name{font-size:12.5px; font-weight:600;}
+  .salud-info .salud-ref{font-size:10.5px; color:var(--muted); margin-top:2px;}
+
+  /* ---- Bloques del modal ---- */
+  .modal-block{background:var(--panel-2); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:12px;}
+  .modal-block .section-label{margin-top:0;}
+  .modal-block:last-child{margin-bottom:0;}
+  .movil-tag{font-family:var(--mono); font-size:11px; color:var(--muted); background:var(--panel-3); border:1px solid var(--border); border-radius:5px; padding:2px 7px; margin-left:6px;}
+  .meta-line{font-size:12px; color:var(--muted); line-height:1.7;}
+  .meta-line strong{color:var(--text);}
+  .info-line{font-size:11.5px; color:var(--muted); margin-top:8px;}
+
+  /* ---- Cubiertas: inputs de mm + zona ---- */
+  .tire-input-row{display:flex; align-items:center; gap:8px; padding:7px 0; border-top:1px solid var(--border);}
+  .tire-input-row:first-of-type{border-top:none;}
+  .tire-input-row .tire-pos-label{font-family:var(--mono); font-size:11.5px; font-weight:700; width:64px; flex:none;}
+  .tire-input-row .tire-dot{width:9px; height:9px; border-radius:50%; flex:none;}
+  .tire-input-row input[type=number], .tire-input-row select{
+    background:var(--panel-3); border:1px solid var(--border); border-radius:6px; color:var(--text);
+    padding:6px 8px; font-size:12.5px; outline:none;
+  }
+  .tire-input-row input[type=number]:focus, .tire-input-row select:focus{border-color:var(--accent);}
+  .tire-input-row input[type=number]{width:64px; flex:none;}
+  .tire-input-row select{flex:1; min-width:90px;}
+  .tire-mm-suffix{font-size:11px; color:var(--muted); flex:none;}
+
+  /* ---- Salud (amortiguadores / elásticos) ---- */
+  .salud-row{display:flex; align-items:center; gap:10px; padding:8px 0; border-top:1px solid var(--border);}
+  .salud-row:first-of-type{border-top:none;}
+  .salud-name{flex:1; font-size:12.5px; font-weight:500;}
+  .salud-chip{
+    font-size:11px; font-weight:700; padding:5px 11px; border-radius:6px; cursor:pointer; text-transform:uppercase; letter-spacing:.03em;
+    border:1px solid var(--border); transition:opacity .12s;
+  }
+  .salud-chip:hover{opacity:.8;}
+  .salud-chip.s-bueno{background:var(--green-bg); color:var(--green);}
+  .salud-chip.s-regular{background:var(--amber-bg); color:var(--amber);}
+  .salud-chip.s-malo{background:var(--red-bg); color:var(--red);}
+  .salud-chip.s-sindato{background:var(--panel-3); color:var(--muted);}
+
+  /* ---- Catálogo de mantenimientos ---- */
+  #catalogoModalBackdrop input, #catalogoModalBackdrop select{
+    background:var(--panel-2); border:1px solid var(--border); border-radius:7px; color:var(--text);
+    padding:8px 10px; font-size:13px; outline:none;
+  }
+  #catalogoModalBackdrop input:focus, #catalogoModalBackdrop select:focus{border-color:var(--accent);}
+  .cat-row{display:flex; align-items:center; gap:8px; padding:8px 0; border-top:1px solid var(--border);}
+  .cat-row:first-of-type{border-top:none;}
+  .cat-row-name{flex:1.4; font-size:12.5px; font-weight:600; min-width:0;}
+  .cat-row select{flex:1; min-width:120px; font-size:12px; padding:6px 8px;}
+  .cat-row input{width:84px; flex:none; font-size:12px; padding:6px 8px;}
+  .cat-row-delete{
+    width:28px; height:28px; border-radius:7px; border:1px solid var(--border); background:var(--panel-2);
+    color:var(--muted); display:flex; align-items:center; justify-content:center; cursor:pointer; flex:none;
+  }
+  .cat-row-delete:hover{border-color:var(--red); color:var(--red);}
+  .cat-row-delete svg{width:14px; height:14px;}
+
+  /* ---- Form fields ---- */
+  .field{display:flex; flex-direction:column; gap:5px; margin-bottom:13px;}
+  .field label{font-size:12px; color:var(--muted); font-weight:600;}
+  .field input, .field select, .field textarea{
+    background:var(--panel-2); border:1px solid var(--border); border-radius:7px; color:var(--text);
+    padding:8px 10px; font-size:13px; outline:none; resize:vertical;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus{border-color:var(--accent);}
+
+  /* ---- Info modal (conectar datos) ---- */
+  .info-modal p, .info-modal li{font-size:13px; line-height:1.55; color:var(--muted);}
+  .info-modal strong{color:var(--text);}
+  .info-modal h4{font-size:13px; margin:18px 0 6px; color:var(--text);}
+  .info-modal ol{padding-left:20px; margin:8px 0;}
+  .info-modal pre{background:#0A0B0E; border:1px solid var(--border); border-radius:8px; padding:12px; font-family:var(--mono); font-size:11.5px; color:var(--text); overflow-x:auto; line-height:1.55;}
+
+  /* ---- Toasts ---- */
+  .toast-wrap{position:fixed; bottom:18px; right:18px; display:flex; flex-direction:column; gap:8px; z-index:80;}
+  .toast{
+    background:var(--panel-3); border:1px solid var(--border-strong); color:var(--text); font-size:12.5px;
+    padding:10px 14px; border-radius:8px; opacity:0; transform:translateY(6px); transition:opacity .2s, transform .2s; max-width:280px;
+  }
+  .toast.show{opacity:1; transform:translateY(0);}
+  .toast.toast-warn{border-color:var(--amber); color:var(--amber);}
+
+  footer.note{margin-top:30px; font-size:11.5px; color:var(--muted); text-align:center;}
+
+  @media (prefers-reduced-motion: reduce){ *{animation:none !important; transition:none !important;} }
+
+  @media (max-width:980px){
+    .app-shell{flex-direction:column;}
+    .sidebar{width:100%; height:auto; position:static; overflow:visible; flex-direction:row; flex-wrap:wrap; gap:16px; border-right:none; border-bottom:1px solid var(--border);}
+    .filter-list-scroll{max-height:160px; flex:none; width:100%;}
+    .filter-list{flex-direction:row; flex-wrap:wrap;}
+    .filter-item{width:auto;}
+    .sidebar-footer{margin-top:0; border-top:none; flex-direction:row; flex-wrap:wrap;}
+    .panel-row{grid-template-columns:1fr;}
+    .kpis{grid-template-columns:repeat(2,1fr);}
+    .content{padding:20px 16px 50px;}
+    .topbar{padding:14px 16px;}
+    .search{width:auto; flex:1;}
+  }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17h2l1.5-5h11L19 17h2M5 17a2 2 0 1 0 4 0 2 2 0 1 0-4 0zm10 0a2 2 0 1 0 4 0 2 2 0 1 0-4 0z"/></svg>
+      </div>
+      <div class="brand-title">Control de Flota</div>
+      <div class="brand-sub">Mantenimiento &amp; inspección</div>
+    </div>
+
+    <div>
+      <div class="side-label">Estado</div>
+      <div class="filter-list" id="estadoFilterList"></div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; min-height:0; flex:1;">
+      <div class="side-label">Sucursales y móviles</div>
+      <div class="filter-list filter-list-scroll" id="zonaTreeList"></div>
+    </div>
+
+    <div class="actions-block">
+      <button class="btn btn-primary btn-block" id="openMantBtn">
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        Registrar mantenimiento
+      </button>
+      <button class="btn btn-block" id="openRepBtn">
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 1 0 1.4l-1 1-2.4-2.4 1-1a1 1 0 0 1 1.4 0zM3 21l1.5-5L11 9.5 14.5 13 8 19.5z"/></svg>
+        Registrar reparación
+      </button>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="mode-row"><span>Estado</span><span class="badge-demo" id="modeBadge">Cargando…</span></div>
+      <div class="mode-row"><span id="syncInfo">Sin sincronizar</span></div>
+      <button class="btn btn-ghost btn-block" id="refreshBtn">
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 4v6h-6"/></svg>
+        Actualizar
+      </button>
+      <button class="btn btn-ghost btn-block" id="connectBtn">Conectar mis datos</button>
+      <button class="btn btn-ghost btn-block" id="catalogoBtn">Catálogo de mantenimientos</button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <h1>Resumen de flota</h1>
+      <div class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input id="searchInput" type="text" placeholder="Buscar por móvil, patente o modelo…">
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="kpis" id="kpiRow"></div>
+      <div class="kpi-subnote" id="kpiSubnote"></div>
+
+      <div class="panel-row">
+        <div class="panel">
+          <div class="panel-title">Atención prioritaria</div>
+          <div id="priorityList"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Reparaciones recientes</div>
+          <div id="repairsList"></div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-bottom:20px;">
+        <div class="panel-title">Documentación — VTO ITV / VTV</div>
+        <div id="docsList"></div>
+      </div>
+
+      <div class="grid" id="vehicleGrid"></div>
+
+      <footer class="note">Conectado a Google Sheets — sin backend adicional para lectura, con un endpoint propio para los registros.</footer>
+    </div>
+  </div>
+</div>
+
+<!-- Modal detalle vehículo -->
+<div class="modal-backdrop" id="vehicleModalBackdrop">
+  <div class="modal" id="vehicleModal"></div>
+</div>
+
+<!-- Modal listado completo (al tocar una tarjeta de Al día / Próximos / Vencidos) -->
+<div class="modal-backdrop" id="fullListModalBackdrop">
+  <div class="modal">
+    <button class="modal-close" data-close-fulllist>✕</button>
+    <h3 id="fullListTitle">Ítems</h3>
+    <div class="full-list-body" id="fullListBody"></div>
+  </div>
+</div>
+
+<!-- Modal registrar mantenimiento -->
+<div class="modal-backdrop" id="mantModalBackdrop">
+  <div class="modal form-modal">
+    <button class="modal-close" data-close-mant>✕</button>
+    <h3>Registrar mantenimiento realizado</h3>
+    <p class="form-hint">Actualiza directamente el km al que le toca el próximo cambio de ese ítem.</p>
+    <div class="field"><label>Vehículo</label><select id="mantPatente"></select></div>
+    <div class="field"><label>Ítem de mantenimiento</label><select id="mantItem"></select></div>
+    <div class="field"><label>Nuevo km del próximo cambio</label><input type="number" id="mantKm"><span id="mantKmHint" class="form-hint" style="margin:4px 0 0;"></span></div>
+    <div class="field"><label>Fecha</label><input type="date" id="mantFecha"></div>
+    <div class="field"><label>Notas (opcional)</label><textarea id="mantNotas" rows="2"></textarea></div>
+    <button class="btn btn-primary btn-block" id="mantSubmit">Guardar</button>
+  </div>
+</div>
+
+<!-- Modal registrar reparación -->
+<div class="modal-backdrop" id="repModalBackdrop">
+  <div class="modal form-modal">
+    <button class="modal-close" data-close-rep>✕</button>
+    <h3>Registrar reparación / acción correctiva</h3>
+    <p class="form-hint">Para roturas o arreglos puntuales, fuera del cronograma de mantenimiento.</p>
+    <div class="field"><label>Vehículo</label><select id="repPatente"></select></div>
+    <div class="field"><label>Fecha</label><input type="date" id="repFecha"></div>
+    <div class="field"><label>Km</label><input type="number" id="repKm"></div>
+    <div class="field"><label>Descripción</label><textarea id="repDescripcion" rows="3" placeholder="Ej: se rompió el amortiguador trasero derecho"></textarea></div>
+    <div class="field"><label>Gravedad</label>
+      <select id="repGravedad"><option value="baja">Baja</option><option value="media" selected>Media</option><option value="alta">Alta</option></select>
+    </div>
+    <button class="btn btn-primary btn-block" id="repSubmit">Guardar</button>
+  </div>
+</div>
+
+<!-- Modal postergar mantenimiento -->
+<div class="modal-backdrop" id="postModalBackdrop">
+  <div class="modal form-modal">
+    <button class="modal-close" data-close-post>✕</button>
+    <h3>Postergar mantenimiento</h3>
+    <p class="form-hint">Suma los km que indiques al próximo cambio (deja de estar vencido), pero queda marcado como "Postergado" con el motivo, para que se sepa que no se hizo realmente.</p>
+    <div class="field"><label>Vehículo</label><select id="postPatente"></select></div>
+    <div class="field"><label>Ítem de mantenimiento</label><select id="postItem"></select></div>
+    <div class="field"><label>¿Cuántos km más querés postergarlo?</label><input type="number" id="postKmExtra" placeholder="Ej: 2000"></div>
+    <div class="field"><label>Motivo</label><textarea id="postMotivo" rows="2" placeholder="Ej: sin turno disponible hasta la semana próxima"></textarea></div>
+    <div class="field"><label>Autorizado por</label><input type="text" id="postAutorizado" placeholder="Ej: R. Gómez (jefe de flota)"></div>
+    <div class="field"><label>Fecha</label><input type="date" id="postFecha"></div>
+    <button class="btn btn-primary btn-block" id="postSubmit">Guardar</button>
+  </div>
+</div>
+
+<!-- Modal catálogo de mantenimientos -->
+<div class="modal-backdrop" id="catalogoModalBackdrop">
+  <div class="modal">
+    <button class="modal-close" data-close-catalogo>✕</button>
+    <h3>Catálogo de mantenimientos</h3>
+    <p class="form-hint">Acá vive la lista de ítems que existen y cada cuántos km se DEBE hacer cada uno. Cuando registrás un mantenimiento como hecho, el dashboard usa este intervalo para sugerirte el próximo km solo. Agregá uno nuevo si te falta algo de la lista.</p>
+
+    <div class="field-row" style="display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;">
+      <input type="text" id="catNuevoNombre" placeholder="Nombre del ítem nuevo" style="flex:1.6; min-width:160px;">
+      <select id="catNuevoCategoria" style="flex:1; min-width:120px;">
+        <option value="motor">Motor y transmisión</option>
+        <option value="frenos">Frenos</option>
+        <option value="neumaticos">Neumáticos</option>
+        <option value="correas">Correas</option>
+        <option value="otros">Otros</option>
+      </select>
+      <input type="number" id="catNuevoIntervalo" placeholder="Intervalo (km)" style="flex:1; min-width:100px;">
+      <button class="btn btn-primary" id="catNuevoAgregar">+ Agregar</button>
+    </div>
+
+    <div id="catalogoList"></div>
+  </div>
+</div>
+
+<!-- Modal conectar datos -->
+<div class="modal-backdrop" id="infoModalBackdrop">
+  <div class="modal info-modal">
+    <button class="modal-close" data-close-info>✕</button>
+    <h3>Conectar tus datos reales</h3>
+    <p>Hay dos partes: <strong>lectura</strong> (traer tus datos de Sheets) y <strong>escritura</strong> (guardar lo que registrás desde los botones).</p>
+
+    <h4>1) Lectura — tus hojas de Sheets</h4>
+    <ol>
+      <li>Compartí cada hoja (inspecciones, mantenimiento) como <strong>"Cualquiera con el enlace — Lector"</strong>.</li>
+      <li>Copiá el ID de cada una desde la URL, entre <code>/d/</code> y <code>/edit</code>.</li>
+      <li>Pegalos en el bloque <strong>CONFIG.SHEETS</strong> al inicio del <code>&lt;script&gt;</code>, junto con el nombre de cada pestaña.</li>
+      <li>Revisá que <strong>CONFIG.COLUMNS</strong> coincida con tus headers reales.</li>
+      <li>Cambiá <strong>USE_MOCK_DATA</strong> a <code>false</code>.</li>
+    </ol>
+
+    <h4>2) Escritura — guardar mantenimientos, reparaciones y neumáticos</h4>
+    <p>Esto necesita un pequeño backend gratuito (Google Apps Script). Te lo dejo en el archivo <strong>registro-acciones-api.gs</strong>: lo pegás en Apps Script, lo "implementás" como aplicación web, y la URL que te da va en <strong>CONFIG.API_URL</strong>.</p>
+    <pre>const CONFIG = {
+  USE_MOCK_DATA: false,
+  API_URL: "https://script.google.com/macros/s/AKfycb.../exec",
+  SHEETS: { inspecciones: {...}, mantenimiento: {...} },
+  ...
+};</pre>
+    <p>Si dejás <code>API_URL</code> vacío, los botones siguen funcionando pero solo localmente (no se guarda para el resto del equipo).</p>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+/* =========================================================================
+   CONFIGURACIÓN
+   ========================================================================= */
+const CONFIG = {
+  USE_MOCK_DATA: false,
+  API_URL: "", // URL del Apps Script Web App (ver registro-acciones-api.gs)
+
+  SHEETS: {
+    inspecciones:  { id: "1YzlQQbzxtxnxxSvt74f1T4obMGNpZOxpnTcCBKlVZgc", sheetName: "" }, // sheetName vacío = usa la primera pestaña (gid=0)
+    mantenimiento: { id: "TU_ID_DE_SHEET_AQUI", sheetName: "Mantenimiento" },
+    reparaciones:  { id: "", sheetName: "Reparaciones" }, // opcional, se va a crear sola al primer registro
+    neumaticos:    { id: "", sheetName: "Neumaticos" },   // opcional, idem
+    postergaciones:{ id: "", sheetName: "Postergaciones" }, // opcional, idem
+    salud:         { id: "", sheetName: "Salud" }, // opcional, idem
+    catalogo:      { id: "", sheetName: "Catalogo_Mantenimiento" } // opcional, idem
+  },
+
+  COLUMNS: {
+    inspecciones: {
+      movil:"numero_de_movil", sede:"sede", km:"km_actual", fecha:"fecha_inspeccion", inspector:"nombre_usuario",
+      // las 4 fotos exteriores — son la RUTA (no la URL todavía). Hace falta agregar
+      // 4 columnas nuevas en tu hoja real con estos nombres + "_URL" para que el script
+      // de fotos las complete (ver fotos-appsheet-a-drive-url.gs actualizado).
+      fotoFrente:"foto_frente_URL", fotoTrasera:"foto_trasero_URL",
+      fotoLateralIzq:"foto_lateral_izquierdo_URL", fotoLateralDer:"foto_lateral_derecho_URL"
+    },
+    mantenimiento: { patente:"Patente", item:"Item", proximoKm:"Proximo_Km" },
+    reparaciones: { patente:"Patente", fecha:"Fecha", km:"Km", descripcion:"Descripcion", gravedad:"Gravedad" },
+    neumaticos: { patente:"Patente", posicion:"Posicion", mm:"Mm", zona:"Zona" },
+    salud: { patente:"Patente", tipo:"Tipo", estado:"Estado" },
+    catalogo: { item:"Item", intervaloKm:"IntervaloKm", categoria:"Categoria" },
+    postergaciones: { patente:"Patente", item:"Item", motivo:"Motivo", autorizadoPor:"AutorizadoPor", fecha:"Fecha" }
+  },
+
+  AMBER_MARGIN_KM: 1500,
+  ITV_AMBER_DAYS: 60,
+  NEUMATICO_MM_ROJO: 1.6,
+  NEUMATICO_MM_AMBER: 3,
+  STALE_INSPECTION_DAYS: 15,
+  AUTO_REFRESH_MINUTES: 5
+};
+
+/* =========================================================================
+   Lectura de Google Sheets vía endpoint público (gviz)
+   ========================================================================= */
+function gvizUrl(sheetId, sheetName){
+  const sheetParam = sheetName ? `&sheet=${encodeURIComponent(sheetName)}` : `&gid=0`;
+  return `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json${sheetParam}`;
+}
+function parseGvizDate(v){
+  if(v == null) return null;
+  if(typeof v === "string" && v.startsWith("Date(")){
+    const p = v.replace("Date(","").replace(")","").split(",").map(Number);
+    return new Date(p[0], p[1], p[2]);
+  }
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? null : d;
+}
+async function fetchSheetRows(sheetId, sheetName){
+  const res = await fetch(gvizUrl(sheetId, sheetName));
+  const text = await res.text();
+  const json = JSON.parse(text.substring(text.indexOf("{"), text.lastIndexOf("}") + 1));
+  const cols = json.table.cols.map(c => c.label || c.id);
+  return json.table.rows.map(r => {
+    const obj = {};
+    cols.forEach((c, i) => { const cell = r.c[i]; obj[c] = cell ? (cell.f ?? cell.v) : null; });
+    return obj;
+  });
+}
+
+// La hoja de Inspecciones de AppSheet identifica vehículos por "numero_de_movil",
+// no por patente. Esta tabla los traduce. Si aparece un móvil nuevo que no esté
+// acá, avisame el número y la patente para agregarlo.
+const MOVIL_A_PATENTE = {
+  2:"AF157QB", 5:"AE484AX", 6:"AE945YF", 7:"AF357LW", 8:"AD628TU", 9:"AF357LX",
+  10:"AF618FH", 11:"AF958VT", 12:"AF958VV", 14:"AF528TK", 15:"AG442DN", 16:"AF546KQ",
+  17:"AF840KE", 18:"AH143YT", 19:"AH499BL", 20:"AH719PO", 21:"AH719PP", 22:"AI019SV"
+};
+
+// Esta es la misma zona/sucursal que ya conocemos por el Excel de mantenimiento
+// (movil -> zona). La usamos hasta que conectemos una hoja de Mantenimiento en vivo.
+const MOVIL_A_ZONA = {
+  2:"Córdoba", 5:"Córdoba", 6:"Córdoba", 7:"Córdoba", 8:"Bariloche", 9:"Córdoba",
+  10:"Bariloche", 11:"Córdoba", 12:"Buenos Aires", 14:"Buenos Aires", 15:"Córdoba",
+  16:"Buenos Aires", 17:"Bariloche", 18:"Buenos Aires", 19:"Buenos Aires", 20:"Córdoba",
+  21:"Córdoba", 22:"Córdoba"
+};
+
+async function loadRealData(){
+  const C = CONFIG.COLUMNS;
+  const insp = await fetchSheetRows(CONFIG.SHEETS.inspecciones.id, CONFIG.SHEETS.inspecciones.sheetName);
+
+  const movilesSinMapear = new Set();
+  const inspecciones = insp.map(r => {
+    const movil = Number(r[C.inspecciones.movil]);
+    const patente = MOVIL_A_PATENTE[movil];
+    if(!patente) movilesSinMapear.add(movil);
+    return {
+      movil, patente, modelo:null, zona: MOVIL_A_ZONA[movil] || null, sedeInspeccion: r[C.inspecciones.sede],
+      km: Number(r[C.inspecciones.km]) || 0, fecha: parseGvizDate(r[C.inspecciones.fecha]),
+      inspector: r[C.inspecciones.inspector],
+      fotos: {
+        frente: r[C.inspecciones.fotoFrente] || null,
+        trasera: r[C.inspecciones.fotoTrasera] || null,
+        lateralIzq: r[C.inspecciones.fotoLateralIzq] || null,
+        lateralDer: r[C.inspecciones.fotoLateralDer] || null
+      }
+    };
+  }).filter(insp => insp.patente); // las que no tienen móvil mapeado se descartan acá (quedan en movilesSinMapear)
+
+  if(movilesSinMapear.size) console.warn("Móviles en Inspecciones sin patente asociada (revisar MOVIL_A_PATENTE):", [...movilesSinMapear]);
+
+  // Mantenimiento todavía puede no estar conectado (no tenemos esa hoja en vivo): si falla,
+  // seguimos igual con km/zona/fotos en vivo, y mantenimiento queda vacío hasta conectarlo.
+  let mantenimiento = [];
+  try{
+    if(CONFIG.SHEETS.mantenimiento.id && CONFIG.SHEETS.mantenimiento.id !== "TU_ID_DE_SHEET_AQUI"){
+      const mant = await fetchSheetRows(CONFIG.SHEETS.mantenimiento.id, CONFIG.SHEETS.mantenimiento.sheetName);
+      mantenimiento = mant.map(r => ({
+        patente: r[C.mantenimiento.patente], item: r[C.mantenimiento.item],
+        proximoKm: r[C.mantenimiento.proximoKm]===""||r[C.mantenimiento.proximoKm]==null ? null : Number(r[C.mantenimiento.proximoKm])
+      }));
+    }
+  }catch(e){ console.warn("Todavía no hay hoja de Mantenimiento conectada — sigo solo con inspecciones:", e); }
+
+  let reparaciones = [];
+  try{
+    if(CONFIG.SHEETS.reparaciones.id){
+      const rep = await fetchSheetRows(CONFIG.SHEETS.reparaciones.id, CONFIG.SHEETS.reparaciones.sheetName);
+      reparaciones = rep.map(r => ({
+        patente:r[C.reparaciones.patente], fecha:parseGvizDate(r[C.reparaciones.fecha]),
+        km:Number(r[C.reparaciones.km])||0, descripcion:r[C.reparaciones.descripcion],
+        gravedad:(r[C.reparaciones.gravedad]||"media").toLowerCase()
+      }));
+    }
+  }catch(e){ console.warn("Todavía no hay hoja de Reparaciones legible:", e); }
+
+  let neumaticos = [];
+  try{
+    if(CONFIG.SHEETS.neumaticos.id){
+      const neu = await fetchSheetRows(CONFIG.SHEETS.neumaticos.id, CONFIG.SHEETS.neumaticos.sheetName);
+      neumaticos = neu.map(r => ({ patente:r[C.neumaticos.patente], posicion:r[C.neumaticos.posicion], mm: r[C.neumaticos.mm]===""||r[C.neumaticos.mm]==null ? null : Number(r[C.neumaticos.mm]), zona:r[C.neumaticos.zona]||null }));
+    }
+  }catch(e){ console.warn("Todavía no hay hoja de Neumaticos legible:", e); }
+
+  let salud = [];
+  try{
+    if(CONFIG.SHEETS.salud.id){
+      const sal = await fetchSheetRows(CONFIG.SHEETS.salud.id, CONFIG.SHEETS.salud.sheetName);
+      salud = sal.map(r => ({ patente:r[C.salud.patente], tipo:r[C.salud.tipo], estado:r[C.salud.estado] }));
+    }
+  }catch(e){ console.warn("Todavía no hay hoja de Salud legible:", e); }
+
+  let catalogo = [];
+  try{
+    if(CONFIG.SHEETS.catalogo.id){
+      const cat = await fetchSheetRows(CONFIG.SHEETS.catalogo.id, CONFIG.SHEETS.catalogo.sheetName);
+      catalogo = cat.map(r => ({ item:r[C.catalogo.item], intervaloKm:Number(r[C.catalogo.intervaloKm])||0, categoria:r[C.catalogo.categoria]||"otros" }));
+    }
+  }catch(e){ console.warn("Todavía no hay hoja de Catalogo_Mantenimiento legible:", e); }
+
+  let postergaciones = [];
+  try{
+    if(CONFIG.SHEETS.postergaciones.id){
+      const pos = await fetchSheetRows(CONFIG.SHEETS.postergaciones.id, CONFIG.SHEETS.postergaciones.sheetName);
+      postergaciones = pos.map(r => ({
+        patente:r[C.postergaciones.patente], item:r[C.postergaciones.item], motivo:r[C.postergaciones.motivo],
+        autorizadoPor:r[C.postergaciones.autorizadoPor], fecha:parseGvizDate(r[C.postergaciones.fecha])
+      }));
+    }
+  }catch(e){ console.warn("Todavía no hay hoja de Postergaciones legible:", e); }
+
+  return { inspecciones, mantenimiento, reparaciones, neumaticos, salud, catalogo, postergaciones };
+}
+
+/* =========================================================================
+   Datos de ejemplo
+   ========================================================================= */
+function buildMockData(){
+  const today = new Date("2026-06-26");
+
+  // Los 12 ítems de mantenimiento que SÍ son "vencimiento a futuro" en tu Excel.
+  // "Alineación y balanceo" y "Revisar Elásticos" se sacaron de esta lista: en tu Excel
+  // esas dos columnas guardan el último km en que se hicieron, no un vencimiento futuro
+  // (por eso antes marcaban casi todo en rojo) — ahora son registros informativos / chequeo manual.
+  const ITEMS_MANTENIMIENTO = [
+    "Embrague", "Bombín Embrague", "Lubricentro", "Rotación de cubiertas",
+    "Cubiertas delanteras", "Cubiertas traseras", "Correas", "Correa Dentada",
+    "Pastillas de frenos delanteras", "Pastillas de frenos traseras",
+    "Rulemán/palier", "TPM"
+  ];
+
+  // Catálogo editable: cada cuántos km se DEBE hacer cada cosa, y en qué bloque aparece.
+  // Estos intervalos son valores de referencia — ajustalos desde "Catálogo de mantenimientos"
+  // en la barra lateral para que coincidan con tu plan real. Cuando registrás un mantenimiento
+  // como hecho, el dashboard usa este número para sugerir el próximo km automáticamente.
+  const CATALOGO_DEFAULT = [
+    { item:"Embrague",                       intervaloKm:200000, categoria:"motor" },
+    { item:"Bombín Embrague",                intervaloKm:100000, categoria:"motor" },
+    { item:"Lubricentro",                    intervaloKm:10000,  categoria:"motor" },
+    { item:"Rotación de cubiertas",          intervaloKm:10000,  categoria:"neumaticos" },
+    { item:"Cubiertas delanteras",           intervaloKm:50000,  categoria:"neumaticos" },
+    { item:"Cubiertas traseras",             intervaloKm:50000,  categoria:"neumaticos" },
+    { item:"Correas",                        intervaloKm:60000,  categoria:"correas" },
+    { item:"Correa Dentada",                 intervaloKm:90000,  categoria:"correas" },
+    { item:"Pastillas de frenos delanteras", intervaloKm:30000,  categoria:"frenos" },
+    { item:"Pastillas de frenos traseras",   intervaloKm:40000,  categoria:"frenos" },
+    { item:"Rulemán/palier",                 intervaloKm:80000,  categoria:"otros" },
+    { item:"TPM",                            intervaloKm:50000,  categoria:"otros" }
+  ];
+
+  // Tu flota real. movil = número de móvil (primera columna de tu Excel).
+  // mant[] sigue el orden de ITEMS_MANTENIMIENTO; null = no aplica a ese vehículo.
+  const FLOTA = [
+    { movil:2,  patente:"AF157QB", zona:"Córdoba",      km:203386, vtoItv:"2027-07-15", alineacion:203386, elasticos:217000,
+      meta:{ cambioDeUso:"si", vigia:"si" },
+      mant:[317500,200000,214000,205000,201000,192000,237000,247000,230000,198000,null,null] },
+    { movil:5,  patente:"AE484AX", zona:"Córdoba",      km:182500, vtoItv:"2026-08-19", alineacion:178300, elasticos:161100,
+      meta:{ filtroParticula:"NO", cambioDeUso:"si", vigia:"si", sinCatalizador:"SI" },
+      mant:[185100,null,180600,141100,180000,180000,220000,null,211100,211100,null,null] },
+    { movil:6,  patente:"AE945YF", zona:"Córdoba",      km:132000, vtoItv:null, alineacion:132000, elasticos:161100,
+      meta:{ cambioDeUso:"si", vigia:"si", sinCatalizador:"SI" },
+      mant:[200000,null,136000,null,143000,null,200000,null,180000,80000,null,null] },
+    { movil:7,  patente:"AF357LW", zona:"Córdoba",      km:232222, vtoItv:"2026-10-24", alineacion:224000, elasticos:230000,
+      meta:{ filtroParticula:"NO", cambioDeUso:"si", vigia:"si", sinCatalizador:"SI" },
+      mant:[295000,400000,247000,237000,285000,285000,220000,null,280000,230000,230000,null] },
+    { movil:8,  patente:"AD628TU", zona:"Bariloche",    km:185400, vtoItv:"2027-07-29", alineacion:185400, elasticos:150000,
+      meta:{ cambioDeUso:"si", vigia:"si" },
+      mant:[260000,null,195000,186400,211000,211000,230000,240000,240000,240000,null,null] },
+    { movil:9,  patente:"AF357LX", zona:"Córdoba",      km:235688, vtoItv:"2026-12-15", alineacion:229000, elasticos:230000,
+      meta:{ filtroParticula:"NO", cambioDeUso:"Pedido", vigia:"si", sinCatalizador:"SI" },
+      mant:[340000,200000,240000,202000,240000,240000,247000,null,230000,280000,260000,null] },
+    { movil:10, patente:"AF618FH", zona:"Bariloche",    km:201800, vtoItv:"2026-10-28", alineacion:201800, elasticos:170000,
+      meta:{ filtroParticula:"NO", cambioDeUso:"si", vigia:"si", sinCatalizador:"SI" },
+      mant:[200000,200000,210000,210000,235000,235000,253000,null,260000,260000,null,null] },
+    { movil:11, patente:"AF958VT", zona:"Córdoba",      km:221509, vtoItv:"2026-05-22", alineacion:219200, elasticos:215000,
+      meta:{ asistencias:1, filtroParticula:"NO", cambioDeUso:"Pedido", vigia:"si" },
+      mant:[150000,200000,228000,220000,258000,245000,240000,null,220000,260000,245000,null] },
+    { movil:12, patente:"AF958VV", zona:"Buenos Aires", km:199200, vtoItv:"2026-05-22", alineacion:198325, elasticos:190000,
+      meta:{ asistencias:1, filtroParticula:"SI", cambioDeUso:"Pedido", vigia:"si" },
+      mant:[254000,200000,204200,200000,220000,240000,230000,null,210000,210000,203000,null] },
+    { movil:14, patente:"AF528TK", zona:"Buenos Aires", km:129600, vtoItv:"2026-03-13", alineacion:129600, elasticos:115000,
+      meta:{ filtroParticula:"SI", cambioDeUso:"si" },
+      mant:[150000,null,139500,114000,142000,142000,162000,180000,160000,160000,null,null] },
+    { movil:15, patente:"AG442DN", zona:"Córdoba",      km:150700, vtoItv:"2027-02-14", alineacion:140810, elasticos:100000,
+      meta:{ asistencias:1, filtroParticula:"SI", cambioDeUso:"si" },
+      mant:[150000,200000,152000,107000,145000,145000,170000,null,160000,160000,100000,null] },
+    { movil:16, patente:"AF546KQ", zona:"Buenos Aires", km:161750, vtoItv:"2023-10-11", alineacion:161750, elasticos:170000,
+      meta:{ asistencias:1, filtroParticula:"SI", cambioDeUso:"si", vigia:"SI" },
+      mant:[150000,200000,175000,145000,160000,163000,210000,null,191000,191000,170000,null] },
+    { movil:17, patente:"AF840KE", zona:"Bariloche",    km:35830,  vtoItv:"2026-03-10", alineacion:35830, elasticos:30000,
+      meta:{ filtroParticula:"SI", cambioDeUso:"si", vigia:"no" },
+      mant:[150000,100000,37500,37000,50000,50000,900000,null,80000,80000,null,null] },
+    { movil:18, patente:"AH143YT", zona:"Buenos Aires", km:68801,  vtoItv:"2028-03-27", alineacion:68801, elasticos:50000,
+      meta:{ asistencias:2, filtroParticula:"SI", cambioDeUso:"Pedido", vigia:"no" },
+      mant:[150000,100000,84000,74300,125000,125000,900000,null,80000,80000,50000,null] },
+    { movil:19, patente:"AH499BL", zona:"Buenos Aires", km:38700,  vtoItv:"2027-06-12", alineacion:38400, elasticos:30000,
+      meta:{ asistencias:1, filtroParticula:"SI", cambioDeUso:"Pedido", vigia:"no" },
+      mant:[150000,100000,43000,25000,50000,50000,900000,null,80000,80000,50000,null] },
+    { movil:20, patente:"AH719PO", zona:"Córdoba",      km:18700,  vtoItv:null, alineacion:13450, elasticos:30000,
+      meta:{ asistencias:0, filtroParticula:"SI", cambioDeUso:"si", vigia:"no" },
+      mant:[150000,100000,30000,25000,50000,50000,900000,null,80000,80000,null,null] },
+    { movil:21, patente:"AH719PP", zona:"Córdoba",      km:9400,   vtoItv:null, alineacion:3679, elasticos:30000,
+      meta:{ asistencias:0, filtroParticula:"SI", cambioDeUso:"si", vigia:"no" },
+      mant:[150000,100000,10000,25000,50000,50000,900000,null,80000,80000,null,null] },
+    { movil:22, patente:"AI019SV", zona:"Córdoba",      km:0,      vtoItv:null, alineacion:null, elasticos:30000,
+      meta:{ asistencias:0, filtroParticula:"SI", cambioDeUso:"Pedido", vigia:"no" },
+      mant:[150000,100000,10000,25000,50000,50000,900000,null,80000,80000,null,null] }
+  ];
+
+  const inspecciones = FLOTA.map(v => ({
+    movil:v.movil, patente:v.patente, modelo:null, zona:v.zona, km:v.km, fecha:null, inspector:null,
+    fotos:{ frente:null, trasera:null, lateralIzq:null, lateralDer:null },
+    vtoItv: v.vtoItv ? new Date(v.vtoItv) : null, meta:v.meta,
+    alineacionUltimoKm: v.alineacion, elasticosUltimoKm: v.elasticos
+  }));
+
+  const mantenimiento = [];
+  FLOTA.forEach(v => {
+    ITEMS_MANTENIMIENTO.forEach((item, idx) => {
+      const proximoKm = v.mant[idx];
+      if(proximoKm != null) mantenimiento.push({ patente:v.patente, item, proximoKm });
+    });
+  });
+
+  const reparaciones = [];
+  const neumaticos = [];   // {patente, posicion, mm, zona}
+  const salud = [];        // {patente, tipo:'amortiguadores'|'elasticos', estado}
+  const postergaciones = [];
+
+  const catalogo = CATALOGO_DEFAULT.map(c => ({...c}));
+
+  return { inspecciones, mantenimiento, reparaciones, neumaticos, salud, catalogo, postergaciones, _today: today };
+}
+
+/* =========================================================================
+   Cálculo de estados
+   ========================================================================= */
+function statusFromRemaining(rem){
+  if(rem <= 0) return "red";
+  if(rem <= CONFIG.AMBER_MARGIN_KM) return "amber";
+  return "green";
+}
+const STATUS_RANK = { red:3, amber:2, green:1 };
+const STATUS_LABEL = { red:"Vencido", amber:"Próximo", green:"Al día" };
+const COLOR_VAR = { green:"var(--green)", amber:"var(--amber)", red:"var(--red)" };
+const GRAVEDAD_LABEL = { baja:"Baja", media:"Media", alta:"Alta" };
+
+function itvStatus(vtoItv, today){
+  if(!vtoItv) return "sindato";
+  const dias = Math.round((vtoItv - today) / 86400000);
+  if(dias < 0) return "red";
+  if(dias <= CONFIG.ITV_AMBER_DAYS) return "amber";
+  return "green";
+}
+
+function estadoPorMm(mm){
+  if(mm == null) return "sindato";
+  if(mm <= CONFIG.NEUMATICO_MM_ROJO) return "red";
+  if(mm <= CONFIG.NEUMATICO_MM_AMBER) return "amber";
+  return "green";
+}
+
+// Ítems cuyo vencimiento, por sí solo, ya amerita marcar el vehículo en rojo (seguridad).
+const ITEMS_CRITICOS = new Set([
+  "Cubiertas delanteras", "Cubiertas traseras", "Correa Dentada",
+  "Pastillas de frenos delanteras", "Pastillas de frenos traseras"
+]);
+
+function buildVehicles(data){
+  const today = data._today || new Date();
+  const byPatente = {};
+  data.inspecciones.forEach(insp => {
+    if(!byPatente[insp.patente]) byPatente[insp.patente] = [];
+    byPatente[insp.patente].push(insp);
+  });
+  Object.values(byPatente).forEach(lista => lista.sort((a,b) => (b.fecha||0) - (a.fecha||0)));
+
+  return Object.values(byPatente).map(lista => {
+    const v = lista[0]; // la más reciente: de ahí salen km/zona/etc. actuales
+    const ultimasInspecciones = lista.slice(0,2); // para la galería de 8 fotos (2 x 4)
+    const items = data.mantenimiento.filter(m => m.patente === v.patente).map(m => {
+      const kmProximo = m.proximoKm;
+      const restante = kmProximo - v.km;
+      const postergacion = (data.postergaciones||[]).find(p => p.patente === v.patente && p.item === m.item) || null;
+      return { item:m.item, kmProximo, restante, status:statusFromRemaining(restante), postergacion };
+    });
+    const itv = { fecha:v.vtoItv||null, status:itvStatus(v.vtoItv, today) };
+    const dias = v.fecha ? Math.round((today - v.fecha) / 86400000) : null;
+
+    const neumaticos = {
+      DI:{ mm:null, zona:null, status:"sindato" }, DD:{ mm:null, zona:null, status:"sindato" },
+      TI:{ mm:null, zona:null, status:"sindato" }, TD:{ mm:null, zona:null, status:"sindato" }
+    };
+    (data.neumaticos||[]).filter(n => n.patente === v.patente).forEach(n => {
+      neumaticos[n.posicion] = { mm:n.mm ?? null, zona:n.zona || null, status:estadoPorMm(n.mm) };
+    });
+
+    const salud = { amortiguadores:"sindato", elasticos:"sindato" };
+    (data.salud||[]).filter(s => s.patente === v.patente).forEach(s => { salud[s.tipo] = s.estado; });
+
+    // Estado general: NO es "el peor ítem gana" (con 12+ ítems por vehículo, eso pintaba
+    // casi toda la flota en rojo aunque la mayoría estuviera bien). Ahora es proporcional:
+    // cuenta cuántos ítems están mal, y si alguno es de seguridad crítica.
+    let reds = 0, ambers = 0, hayCriticoRojo = false;
+    items.forEach(it => {
+      if(it.status === "red"){ reds++; if(ITEMS_CRITICOS.has(it.item)) hayCriticoRojo = true; }
+      else if(it.status === "amber") ambers++;
+    });
+    Object.values(neumaticos).forEach(n => {
+      if(n.status === "red"){ reds++; hayCriticoRojo = true; } // un neumático gastado es siempre crítico
+      else if(n.status === "amber") ambers++;
+    });
+    Object.values(salud).forEach(s => {
+      if(s === "malo") reds++;
+      else if(s === "regular") ambers++;
+    });
+
+    let overall = "green";
+    if(hayCriticoRojo || reds >= 3) overall = "red";
+    else if(reds >= 1 || ambers >= 1) overall = "amber";
+    if(itv.status === "red") overall = "red";
+    else if(itv.status === "amber" && overall !== "red") overall = "amber";
+
+    const reparaciones = (data.reparaciones||[]).filter(r => r.patente === v.patente).sort((a,b)=> (b.fecha||0) - (a.fecha||0));
+
+    return { ...v, items, itv, overall, reds, ambers, diasDesdeInspeccion:dias, stale: dias != null && dias > CONFIG.STALE_INSPECTION_DAYS, neumaticos, salud, reparaciones, ultimasInspecciones };
+  });
+}
+
+/* =========================================================================
+   Estado y utilidades de render
+   ========================================================================= */
+let RAW_DATA = null;
+let STATE = { vehicles:[], filter:"all", zona:"todas", search:"" };
+
+function fmtKm(n){ return Math.round(n).toLocaleString("es-AR"); }
+function fmtFecha(d){ return d ? new Date(d).toLocaleDateString("es-AR") : "—"; }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+
+function getZonas(){ return [...new Set(STATE.vehicles.map(v=>v.zona).filter(Boolean))].sort(); }
+function getZonaScoped(){ return STATE.zona === "todas" ? STATE.vehicles : STATE.vehicles.filter(v=>v.zona===STATE.zona); }
+
+function showToast(msg, warn){
+  const el = document.createElement("div");
+  el.className = "toast" + (warn ? " toast-warn" : "");
+  el.textContent = msg;
+  document.getElementById("toastWrap").appendChild(el);
+  requestAnimationFrame(()=> el.classList.add("show"));
+  setTimeout(()=>{ el.classList.remove("show"); setTimeout(()=>el.remove(), 250); }, 3400);
+}
+
+const iconWarning = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.86l-8.2 14.2A1.5 1.5 0 0 0 3.4 20.5h17.2a1.5 1.5 0 0 0 1.3-2.44l-8.2-14.2a1.5 1.5 0 0 0-2.6 0z"/></svg>`;
+const iconPin = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-7.2 7-12a7 7 0 1 0-14 0c0 4.8 7 12 7 12z"/><circle cx="12" cy="9" r="2.4"/></svg>`;
+
+/* ---- Categorías visuales de mantenimiento ---- */
+const ICON_MOTOR = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 13a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V19a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 13a1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 7a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 2.6a1.7 1.7 0 0 0 1-1.55V1a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 7a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z"/></svg>`;
+const ICON_FRENOS = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.2"/><path d="M12 4v4M12 16v4M4 12h4M16 12h4"/></svg>`;
+const ICON_NEUMATICOS = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.4"/><path d="M12 3v5.6M12 15.4V21M3 12h5.6M15.4 12H21"/></svg>`;
+const ICON_CORREAS = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="7" cy="12" r="3.2"/><circle cx="17" cy="12" r="3.2"/><path d="M9.8 10.2 14.2 10.2 M9.8 13.8 14.2 13.8"/></svg>`;
+const ICON_OTROS = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>`;
+const ICON_AMORTIGUADOR = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="9" rx="1.5"/><path d="M12 12v9M9 18h6"/></svg>`;
+const ICON_ELASTICO = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 16 Q12 4 21 16"/><path d="M3 16h3M18 16h3"/></svg>`;
+
+// La categoría de cada ítem ahora viene del catálogo editable (RAW_DATA.catalogo),
+// no de un mapa fijo — así un ítem nuevo que agregues ya aparece bien clasificado.
+function getCatalogoItem(item){ return (RAW_DATA?.catalogo||[]).find(c => c.item === item) || null; }
+function getItemCategoria(item){ return getCatalogoItem(item)?.categoria || "otros"; }
+
+const CATEGORIAS_DEF = [
+  { key:"frenos",      label:"Frenos",               icon:ICON_FRENOS },
+  { key:"neumaticos",  label:"Neumáticos · cronograma", icon:ICON_NEUMATICOS },
+  { key:"correas",     label:"Correas",              icon:ICON_CORREAS },
+  { key:"motor",       label:"Motor y transmisión",  icon:ICON_MOTOR },
+  { key:"otros",       label:"Otros",                icon:ICON_OTROS }
+];
+
+function maintRowHtml(it){
+  const pct = it.restante <= 0 ? 1 : Math.max(0, Math.min(1, 1 - it.restante/50000));
+  const rightText = it.restante > 0 ? `Faltan ${fmtKm(it.restante)} km` : `Vencido ${fmtKm(Math.abs(it.restante))} km`;
+  const postTag = it.postergacion ? `<span class="tag-postergado" title="${it.postergacion.motivo} — autorizado por ${it.postergacion.autorizadoPor||"—"} (${fmtFecha(it.postergacion.fecha)})">Postergado</span>` : "";
+  return `
+    <div class="maint-row">
+      <div class="maint-name">${it.item} ${postTag}</div>
+      <div class="maint-bar-wrap"><div class="maint-bar" style="width:${pct*100}%; background:${COLOR_VAR[it.status]}"></div></div>
+      <div class="maint-right" style="color:${COLOR_VAR[it.status]}">${rightText}</div>
+      <div class="maint-postpone" data-item="${it.item}" title="Postergar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+      </div>
+      <div class="maint-check" data-item="${it.item}" title="Marcar como hecho">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12.5l4.5 4.5L19 7"/></svg>
+      </div>
+    </div>`;
+}
+
+function maintBlocksHtml(v){
+  return CATEGORIAS_DEF.map(cat => {
+    const items = v.items.filter(it => getItemCategoria(it.item) === cat.key)
+      .sort((a,b)=>STATUS_RANK[b.status]-STATUS_RANK[a.status]);
+    if(items.length === 0) return "";
+    const reds = items.filter(i=>i.status==="red").length;
+    const ambers = items.filter(i=>i.status==="amber").length;
+    const summaryColor = reds>0 ? "var(--red)" : ambers>0 ? "var(--amber)" : "var(--green)";
+    const summaryText = reds>0 ? `${reds} vencido${reds>1?"s":""}` : ambers>0 ? `${ambers} próximo${ambers>1?"s":""}` : "Todo al día";
+    return `
+    <div class="cat-block">
+      <div class="cat-head">
+        <span class="cat-icon">${cat.icon}</span>
+        <span class="cat-title">${cat.label}</span>
+        <span class="cat-count" style="color:${summaryColor}">${summaryText}</span>
+      </div>
+      ${items.map(maintRowHtml).join("")}
+    </div>`;
+  }).join("");
+}
+
+/* =========================================================================
+   Render: sidebar (filtros)
+   ========================================================================= */
+function renderSidebarFilters(){
+  // Primero las cabeceras de sucursal (Todas + las 3), todas juntas arriba.
+  // Después, una sola lista de móviles: la de la sucursal que esté activa.
+  const zonas = getZonas();
+  const zonaDefs = [{ key:"todas", label:"Todas" }, ...zonas.map(z => ({ key:z, label:z }))];
+
+  const headers = zonaDefs.map(z => {
+    const count = z.key==="todas" ? STATE.vehicles.length : STATE.vehicles.filter(v=>v.zona===z.key).length;
+    const isActive = STATE.zona===z.key;
+    return `<button class="filter-item filter-item-zona ${isActive?"active":""}" data-zona="${z.key}">${z.label}<span class="count">${count}</span></button>`;
+  }).join("");
+
+  const moviles = [...getZonaScoped()].sort((a,b)=>(a.movil||0)-(b.movil||0)).map(v => `
+    <button class="filter-item movil-item" data-open-movil="${v.patente}">
+      <span class="dot" style="background:${COLOR_VAR[v.overall]}"></span>
+      Móvil ${v.movil}<span class="movil-plate">${v.patente}</span>
+    </button>`).join("");
+
+  document.getElementById("zonaTreeList").innerHTML = headers + `<div class="movil-nested">${moviles}</div>`;
+  document.querySelectorAll("[data-zona]").forEach(btn => btn.addEventListener("click", () => { STATE.zona = btn.dataset.zona; renderAll(); }));
+  document.querySelectorAll("[data-open-movil]").forEach(btn => btn.addEventListener("click", () => openVehicleModal(btn.dataset.openMovil)));
+
+  // Estado (dentro de la zona seleccionada)
+  const scoped = getZonaScoped();
+  const counts = { all:scoped.length, green:0, amber:0, red:0 };
+  scoped.forEach(v => counts[v.overall]++);
+  const estadoDefs = [
+    { key:"all", label:"Todos", color:null },
+    { key:"green", label:"Al día", color:"var(--green)" },
+    { key:"amber", label:"Próximos", color:"var(--amber)" },
+    { key:"red", label:"Vencidos", color:"var(--red)" }
+  ];
+  document.getElementById("estadoFilterList").innerHTML = estadoDefs.map(d => `
+    <button class="filter-item ${STATE.filter===d.key?"active":""}" data-filter="${d.key}">
+      ${d.color ? `<span class="dot" style="background:${d.color}"></span>` : ""}
+      ${d.label}<span class="count">${counts[d.key]}</span>
+    </button>`).join("");
+  document.querySelectorAll("[data-filter]").forEach(btn => btn.addEventListener("click", () => { STATE.filter = btn.dataset.filter; renderAll(); }));
+}
+
+/* =========================================================================
+   Render: KPIs
+   ========================================================================= */
+function getFlatItems(){
+  const scoped = getZonaScoped();
+  const flat = [];
+  scoped.forEach(v => v.items.forEach(it => flat.push({ patente:v.patente, movil:v.movil, zona:v.zona, ...it })));
+  return flat;
+}
+
+function renderKPIs(){
+  const flat = getFlatItems();
+  const total = flat.length;
+  const counts = { green:0, amber:0, red:0 };
+  flat.forEach(it => counts[it.status]++);
+  const zonaLabel = STATE.zona === "todas" ? "toda la flota" : STATE.zona;
+
+  const cards = [
+    { label:`Ítems controlados — ${zonaLabel}`, value:total, frac:1, color:"var(--accent)", status:null },
+    { label:"Al día", value:counts.green, frac:total?counts.green/total:0, color:"var(--green)", status:"green" },
+    { label:"Próximos a vencer", value:counts.amber, frac:total?counts.amber/total:0, color:"var(--amber)", status:"amber" },
+    { label:"Vencidos", value:counts.red, frac:total?counts.red/total:0, color:"var(--red)", status:"red" }
+  ];
+
+  document.getElementById("kpiRow").innerHTML = cards.map(c => `
+    <div class="kpi-card${c.status?" kpi-card-clickable":""}" ${c.status?`data-kpi-status="${c.status}"`:""}>
+      <div class="kpi-value">${c.value}</div>
+      <div class="kpi-label">${c.label}</div>
+      <div class="kpi-bar"><div class="kpi-bar-fill" style="width:${c.frac*100}%; background:${c.color}"></div></div>
+    </div>`).join("");
+
+  document.querySelectorAll("[data-kpi-status]").forEach(card => card.addEventListener("click", () => openFullListModal(card.dataset.kpiStatus)));
+}
+
+/* =========================================================================
+   Render: paneles de prioridad y reparaciones
+   ========================================================================= */
+function renderPriority(){
+  const scoped = getZonaScoped();
+  const flat = [];
+  scoped.forEach(v => v.items.forEach(it => flat.push({ patente:v.patente, movil:v.movil, ...it })));
+  flat.sort((a,b) => a.restante - b.restante);
+  const top = flat.filter(it => it.status !== "green").slice(0,6);
+
+  const el = document.getElementById("priorityList");
+  if(top.length === 0){ el.innerHTML = `<div class="panel-empty">No hay vencimientos próximos en esta vista.</div>`; return; }
+
+  el.innerHTML = top.map((it,i) => {
+    const pct = it.restante <= 0 ? 1 : Math.max(0, Math.min(1, 1 - it.restante/50000));
+    const rightText = it.restante > 0 ? `Faltan ${fmtKm(it.restante)} km` : `Vencido ${fmtKm(Math.abs(it.restante))} km`;
+    return `
+    <div class="list-row" data-patente="${it.patente}">
+      <span class="list-rank">${i+1}</span>
+      <span class="list-plate">${it.patente}<span class="movil-tag">M${it.movil}</span></span>
+      <span class="list-title">${it.item}</span>
+      <span class="list-bar-wrap"><span class="list-bar" style="width:${pct*100}%; background:${COLOR_VAR[it.status]}"></span></span>
+      <span class="list-right" style="color:${COLOR_VAR[it.status]}">${rightText}</span>
+    </div>`;
+  }).join("");
+  el.querySelectorAll(".list-row").forEach(row => row.addEventListener("click", () => openVehicleModal(row.dataset.patente)));
+}
+
+function renderRepairs(){
+  const scoped = getZonaScoped();
+  const flat = [];
+  scoped.forEach(v => v.reparaciones.forEach(r => flat.push({ patente:v.patente, movil:v.movil, ...r })));
+  flat.sort((a,b) => (b.fecha||0) - (a.fecha||0));
+  const top = flat.slice(0,6);
+
+  const el = document.getElementById("repairsList");
+  if(top.length === 0){ el.innerHTML = `<div class="panel-empty">No hay reparaciones registradas en esta vista.</div>`; return; }
+
+  const gravColor = { baja:"var(--green)", media:"var(--amber)", alta:"var(--red)" };
+  const gravBg = { baja:"var(--green-bg)", media:"var(--amber-bg)", alta:"var(--red-bg)" };
+
+  el.innerHTML = top.map(r => `
+    <div class="list-row" data-patente="${r.patente}">
+      <span class="list-plate">${r.patente}<span class="movil-tag">M${r.movil}</span></span>
+      <span class="list-title">${r.descripcion}</span>
+      <span class="tag-gravedad" style="background:${gravBg[r.gravedad]||gravBg.media}; color:${gravColor[r.gravedad]||gravColor.media}">${GRAVEDAD_LABEL[r.gravedad]||"Media"}</span>
+      <span class="list-right">${fmtFecha(r.fecha)}</span>
+    </div>`).join("");
+  el.querySelectorAll(".list-row").forEach(row => row.addEventListener("click", () => openVehicleModal(row.dataset.patente)));
+}
+
+/* =========================================================================
+   Render: grilla de vehículos
+   ========================================================================= */
+function renderGrid(){
+  const term = STATE.search.trim().toLowerCase();
+  const list = getZonaScoped().filter(v => {
+    if(STATE.filter !== "all" && v.overall !== STATE.filter) return false;
+    if(term && !(v.patente.toLowerCase().includes(term) || (v.modelo||"").toLowerCase().includes(term) || String(v.movil).includes(term))) return false;
+    return true;
+  });
+
+  const grid = document.getElementById("vehicleGrid");
+  if(list.length === 0){ grid.innerHTML = `<div class="empty" style="grid-column:1/-1">Ningún vehículo coincide con ese filtro o búsqueda.</div>`; return; }
+
+  grid.innerHTML = list.map(v => {
+    const sorted = [...v.items].sort((a,b) => STATUS_RANK[b.status]-STATUS_RANK[a.status]);
+    const visible = sorted.slice(0,3);
+    const extra = sorted.length - visible.length;
+    return `
+    <div class="card status-${v.overall}" data-patente="${v.patente}">
+      <div class="card-top">
+        <div>
+          <span class="plate">${v.patente}<span class="movil-tag">Móvil ${v.movil}</span></span>
+          <div class="model">${v.modelo||""}</div>
+          ${v.zona ? `<div class="zona-tag">${iconPin}${v.zona}</div>` : ""}
+        </div>
+        <span class="status-pill status-${v.overall}">${STATUS_LABEL[v.overall]}</span>
+      </div>
+      <div class="km-row"><span class="num">${fmtKm(v.km)}</span><span class="unit">km</span></div>
+      ${v.itv.status==="red" ? `<div class="last-inspect" style="color:var(--red)">${iconWarning}ITV vencida</div>` : v.itv.status==="amber" ? `<div class="last-inspect" style="color:var(--amber)">${iconWarning}ITV vence pronto</div>` : ""}
+      <div class="last-inspect ${v.stale?"stale":""}">
+        ${v.stale ? iconWarning : ""}Última inspección: ${v.diasDesdeInspeccion!=null ? `hace ${v.diasDesdeInspeccion} días` : "sin datos"}
+      </div>
+      <div class="item-chips">
+        ${visible.map(it => `<span class="item-chip"><span class="dot" style="background:${COLOR_VAR[it.status]}"></span>${it.item}</span>`).join("")}
+        ${extra>0 ? `<span class="item-chip more">+${extra} más</span>` : ""}
+      </div>
+    </div>`;
+  }).join("");
+  grid.querySelectorAll(".card").forEach(card => card.addEventListener("click", () => openVehicleModal(card.dataset.patente)));
+}
+
+function renderDocumentos(){
+  const scoped = getZonaScoped();
+  const vencidos = scoped.filter(v => v.itv.status==="red" || v.itv.status==="amber")
+    .sort((a,b) => (a.itv.fecha||0) - (b.itv.fecha||0));
+
+  const el = document.getElementById("docsList");
+  if(vencidos.length === 0){ el.innerHTML = `<div class="panel-empty">No hay ITV/VTV vencidas ni por vencer en esta vista.</div>`; return; }
+
+  const itvColor = { red:"var(--red)", amber:"var(--amber)" };
+  el.innerHTML = vencidos.map(v => {
+    const dias = Math.round((v.itv.fecha - new Date()) / 86400000);
+    const txt = dias < 0 ? `Vencida hace ${Math.abs(dias)} días` : `Vence en ${dias} días`;
+    return `
+    <div class="list-row" data-patente="${v.patente}">
+      <span class="list-plate">${v.patente}<span class="movil-tag">M${v.movil}</span></span>
+      <span class="list-title">${v.zona||""}</span>
+      <span class="list-right" style="color:${itvColor[v.itv.status]}">${fmtFecha(v.itv.fecha)} — ${txt}</span>
+    </div>`;
+  }).join("");
+  el.querySelectorAll(".list-row").forEach(row => row.addEventListener("click", () => openVehicleModal(row.dataset.patente)));
+}
+
+function renderKPISubnote(){
+  const scoped = getZonaScoped();
+  document.getElementById("kpiSubnote").textContent = `${scoped.length} vehículo${scoped.length!==1?"s":""} en esta vista`;
+}
+
+function renderAll(){
+  renderSidebarFilters();
+  renderKPIs();
+  renderKPISubnote();
+  renderPriority();
+  renderRepairs();
+  renderDocumentos();
+  renderGrid();
+}
+
+/* =========================================================================
+   Silueta del vehículo (motorhome) + diagrama de neumáticos
+   ========================================================================= */
+function vehicleSilhouetteSVG(v){
+  const positions = [
+    { key:"DI", cx:38,  cy:130 }, { key:"DD", cx:182, cy:130 },
+    { key:"TI", cx:38,  cy:300 }, { key:"TD", cx:182, cy:300 }
+  ];
+  const tires = positions.map(p => {
+    const t = v.neumaticos[p.key];
+    const color = COLOR_VAR[t.status] || "var(--muted)";
+    const w=22, h=46, x=p.cx-w/2, y=p.cy-h/2;
+    const isLeftSide = (p.key === "DI" || p.key === "TI"); // el lado del medio (interior) es distinto según el costado
+    const hayBanda = t.zona && t.zona !== "pareja";
+    const bandColor = t.status === "sindato" ? "var(--red)" : color; // si marcaron zona pero no mm, lo tratamos como alerta
+    const bandW = w/3;
+    let bandX = x + bandW; // "centro" por defecto
+    if(t.zona === "interior") bandX = isLeftSide ? x + 2*bandW : x;
+    else if(t.zona === "exterior") bandX = isLeftSide ? x : x + 2*bandW;
+    const baseFill = hayBanda ? "var(--panel-3)" : color;
+    return `
+      <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="7" fill="${baseFill}" stroke="var(--border-strong)" stroke-width="1.2"></rect>
+      ${hayBanda ? `<rect x="${bandX}" y="${y+3}" width="${bandW}" height="${h-6}" rx="3" fill="${bandColor}"></rect>` : ""}`;
+  }).join("");
+
+  return `<svg viewBox="0 0 220 380" width="150" height="260">
+    <path d="M58 20 h104 a10 10 0 0 1 10 10 v36 h-124 v-36 a10 10 0 0 1 10 -10 z" fill="var(--panel-3)" stroke="var(--border)" stroke-width="1.4"></path>
+    <rect x="70" y="28" width="80" height="20" rx="3" fill="var(--bg)" opacity="0.55"></rect>
+    <rect x="30" y="66" width="160" height="290" rx="16" fill="var(--panel-2)" stroke="var(--border)" stroke-width="1.4"></rect>
+    <rect x="42" y="90" width="136" height="34" rx="4" fill="var(--bg)" opacity="0.35"></rect>
+    <line x1="30" y1="200" x2="190" y2="200" stroke="var(--border)" stroke-width="1"></line>
+    ${tires}
+  </svg>`;
+}
+
+function tireInputRows(v){
+  const positions = [["DI","Del. Izq."],["DD","Del. Der."],["TI","Tras. Izq."],["TD","Tras. Der."]];
+  return positions.map(([key,label]) => {
+    const t = v.neumaticos[key];
+    const color = COLOR_VAR[t.status] || "var(--muted)";
+    const zonas = [["","¿Dónde está más gastada?"],["interior","Interior"],["centro","Centro"],["exterior","Exterior"],["pareja","Pareja / uniforme"]];
+    return `
+    <div class="tire-input-row">
+      <span class="tire-dot" style="background:${color}"></span>
+      <span class="tire-pos-label">${label}</span>
+      <input type="number" step="0.5" min="0" max="12" placeholder="mm" value="${t.mm ?? ""}" data-pos="${key}" class="tire-mm-input">
+      <span class="tire-mm-suffix">mm</span>
+      <select data-pos="${key}" class="tire-zona-select">
+        ${zonas.map(([v2,label2]) => `<option value="${v2}" ${t.zona===v2?"selected":""}>${label2}</option>`).join("")}
+      </select>
+    </div>`;
+  }).join("");
+}
+
+function guardarNeumatico(patente, posicion, mm, zona){
+  RAW_DATA.neumaticos = (RAW_DATA.neumaticos||[]).filter(n => !(n.patente===patente && n.posicion===posicion));
+  RAW_DATA.neumaticos.push({ patente, posicion, mm: mm==="" ? null : Number(mm), zona: zona || null });
+  STATE.vehicles = buildVehicles(RAW_DATA);
+  openVehicleModal(patente);
+  renderAll();
+  enviarRegistro("neumatico", { patente, posicion, mm, zona });
+}
+
+/* =========================================================================
+   Salud del vehículo: amortiguadores y elásticos (chequeo manual)
+   ========================================================================= */
+const SALUD_ORDEN = ["bueno","regular","malo"];
+const SALUD_LABEL = { bueno:"Bueno", regular:"Regular", malo:"Malo", sindato:"Sin revisar" };
+
+function saludHtml(v){
+  const card = (tipo, nombre, icon, refKm) => `
+    <div class="salud-card">
+      <span class="salud-icon s-${v.salud[tipo]}">${icon}</span>
+      <div class="salud-info">
+        <div class="salud-name">${nombre}</div>
+        ${refKm!=null ? `<div class="salud-ref">Último registro Excel: ${fmtKm(refKm)} km</div>` : ""}
+      </div>
+      <span class="salud-chip s-${v.salud[tipo]}" data-tipo="${tipo}">${SALUD_LABEL[v.salud[tipo]]}</span>
+    </div>`;
+  return `<div class="salud-cards">${card("amortiguadores","Amortiguadores",ICON_AMORTIGUADOR,null)}${card("elasticos","Elásticos",ICON_ELASTICO,v.elasticosUltimoKm)}</div>`;
+}
+
+function cycleSalud(patente, tipo){
+  const v = STATE.vehicles.find(x => x.patente === patente);
+  if(!v) return;
+  const actual = v.salud[tipo] === "sindato" ? -1 : SALUD_ORDEN.indexOf(v.salud[tipo]);
+  const next = SALUD_ORDEN[(actual+1) % SALUD_ORDEN.length];
+  v.salud[tipo] = next;
+  RAW_DATA.salud = (RAW_DATA.salud||[]).filter(s => !(s.patente===patente && s.tipo===tipo));
+  RAW_DATA.salud.push({ patente, tipo, estado:next });
+  openVehicleModal(patente);
+  enviarRegistro("salud", { patente, tipo, estado:next });
+}
+
+/* =========================================================================
+   Modal de detalle del vehículo
+   ========================================================================= */
+function openVehicleModal(patente){
+  const v = STATE.vehicles.find(x => x.patente === patente);
+  if(!v) return;
+
+  const maintRows = maintBlocksHtml(v);
+
+  const itvColor = { red:"var(--red)", amber:"var(--amber)", green:"var(--green)", sindato:"var(--muted)" };
+  const itvLabel = v.itv.status==="sindato" ? "Sin dato" : v.itv.status==="red" ? "Vencida" : v.itv.status==="amber" ? "Vence pronto" : "Vigente";
+  const itvHtml = `
+    <div class="maint-row">
+      <div class="maint-name">VTO ITV / VTV</div>
+      <div class="maint-right" style="color:${itvColor[v.itv.status]}; width:auto; flex:1; text-align:left;">${v.itv.fecha ? fmtFecha(v.itv.fecha) : "Sin fecha registrada"}</div>
+      <span class="status-pill" style="background:${itvColor[v.itv.status]}22; color:${itvColor[v.itv.status]}">${itvLabel}</span>
+    </div>`;
+
+  const metaItems = [
+    v.meta?.cambioDeUso ? `Cambio de uso: <strong>${v.meta.cambioDeUso}</strong>` : null,
+    v.meta?.vigia ? `Vigía: <strong>${v.meta.vigia}</strong>` : null,
+    v.meta?.filtroParticula ? `Filtro de partícula: <strong>${v.meta.filtroParticula}</strong>` : null,
+    v.meta?.sinCatalizador ? `Sin catalizador: <strong>${v.meta.sinCatalizador}</strong>` : null,
+    v.meta?.asistencias != null ? `Asistencias en ruta: <strong>${v.meta.asistencias}</strong>` : null
+  ].filter(Boolean);
+  const metaHtml = metaItems.length ? `<div style="font-size:12px; color:var(--muted); line-height:1.7;">${metaItems.join(" &nbsp;·&nbsp; ")}</div>` : "";
+
+  const ANGULOS = [["frente","Frente"],["trasera","Trasera"],["lateralIzq","Lat. izq."],["lateralDer","Lat. der."]];
+  function fotoSlotHtml(url, label){
+    const ok = typeof url === "string" && url.startsWith("http");
+    return `<div class="foto-slot">
+      ${ok ? `<img src="${url}" alt="${label}" class="photo-img-sm">` : `<div class="photo-box-sm"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 7h3l1.5-2h7L17 7h3a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z"/><circle cx="12" cy="13" r="3.5"/></svg></div>`}
+      <span class="foto-slot-label">${label}</span>
+    </div>`;
+  }
+  function rondaHtml(insp, titulo){
+    return `<div class="foto-ronda">
+      <div class="foto-ronda-label">${titulo}${insp && insp.fecha ? ` · ${fmtFecha(insp.fecha)}` : (insp ? "" : " — sin registrar todavía")}</div>
+      <div class="foto-grid">${ANGULOS.map(([key,label]) => fotoSlotHtml(insp ? insp.fotos?.[key] : null, label)).join("")}</div>
+    </div>`;
+  }
+  const galeriaHtml = rondaHtml(v.ultimasInspecciones[0], "Última inspección") + rondaHtml(v.ultimasInspecciones[1] || null, "Inspección anterior");
+
+  const history = [0,1,2].map(i => {
+    const fecha = v.fecha ? new Date(v.fecha) : new Date(); fecha.setDate(fecha.getDate() - (i+1)*9);
+    const km = v.km - (i+1)*1800;
+    return `<div class="history-row"><span>${fmtFecha(fecha)}</span><span>${fmtKm(km)} km</span><span>${v.inspector||"—"}</span></div>`;
+  }).join("");
+
+  const reparacionesHtml = v.reparaciones.length === 0
+    ? `<div class="panel-empty">Sin reparaciones registradas.</div>`
+    : v.reparaciones.map(r => `
+      <div class="rep-row">
+        <div class="rep-top"><span class="rep-date">${fmtFecha(r.fecha)} · ${fmtKm(r.km)} km</span>
+        <span class="tag-gravedad" style="background:${{baja:"var(--green-bg)",media:"var(--amber-bg)",alta:"var(--red-bg)"}[r.gravedad]||"var(--amber-bg)"}; color:${{baja:"var(--green)",media:"var(--amber)",alta:"var(--red)"}[r.gravedad]||"var(--amber)"}">${GRAVEDAD_LABEL[r.gravedad]||"Media"}</span></div>
+        <div class="rep-desc">${r.descripcion}</div>
+      </div>`).join("");
+
+  document.getElementById("vehicleModal").innerHTML = `
+    <button class="modal-close" data-close-vehicle>✕</button>
+    <div class="modal-head">
+      <div>
+        <span class="plate">${v.patente}<span class="movil-tag">Móvil ${v.movil}</span></span>
+        <div class="model">${v.modelo||""}</div>
+        ${v.zona ? `<div class="zona-tag">${iconPin}${v.zona}</div>` : ""}
+      </div>
+      <span class="status-pill status-${v.overall}">${STATUS_LABEL[v.overall]}</span>
+    </div>
+
+    <div class="health-summary">
+      <div class="hs-item"><span class="hs-dot" style="background:var(--red)"></span><span class="hs-num">${v.items.filter(i=>i.status==="red").length}</span><span class="hs-label">vencidos</span></div>
+      <div class="hs-item"><span class="hs-dot" style="background:var(--amber)"></span><span class="hs-num">${v.items.filter(i=>i.status==="amber").length}</span><span class="hs-label">próximos</span></div>
+      <div class="hs-item"><span class="hs-dot" style="background:var(--green)"></span><span class="hs-num">${v.items.filter(i=>i.status==="green").length}</span><span class="hs-label">al día</span></div>
+    </div>
+
+    <div class="modal-block">
+      <div class="section-label">Datos generales</div>
+      <div class="modal-meta">
+        <div>Km actual<strong>${fmtKm(v.km)} km</strong></div>
+        <div>Última inspección<strong>${fmtFecha(v.fecha)}</strong></div>
+        <div>Inspector<strong>${v.inspector||"—"}</strong></div>
+      </div>
+      ${metaHtml}
+    </div>
+
+    <div class="modal-block">
+      <div class="section-label">Documentación</div>
+      ${itvHtml}
+    </div>
+
+    <div class="modal-block">
+      <div class="section-label">Mantenimiento por ítem</div>
+      ${maintRows}
+      ${(v.alineacionUltimoKm!=null) ? `<div class="info-line">Última alineación y balanceo registrada: ${fmtKm(v.alineacionUltimoKm)} km (hace ${fmtKm(v.km - v.alineacionUltimoKm)} km).</div>` : ""}
+    </div>
+
+    <div class="modal-block">
+      <div class="section-label">Salud del vehículo</div>
+      <div class="tire-wrap">
+        <div>${vehicleSilhouetteSVG(v)}</div>
+        <div style="flex:1; min-width:220px;">
+          ${tireInputRows(v)}
+        </div>
+      </div>
+      <div class="info-line" style="margin-bottom:8px;">Cargá los mm de huella de cada cubierta y dónde está más gastada (rueda verde ≥3mm, amarilla 1.6–3mm, roja ≤1.6mm — límite legal).</div>
+      ${saludHtml(v)}
+    </div>
+
+    <div class="modal-block">
+      <div class="section-label">Reparaciones / acciones correctivas
+        <span class="link-btn" id="addRepFromModal">+ agregar</span>
+      </div>
+      ${reparacionesHtml}
+    </div>
+
+    <div class="modal-block">
+      <div class="section-label">Fotos exteriores · últimas 2 inspecciones</div>
+      ${galeriaHtml}
+      <div class="info-line">Se actualiza solo a medida que entran inspecciones nuevas desde AppSheet — no hace falta tocar nada.</div>
+    </div>
+
+    <div class="modal-block">
+      <div class="section-label">Historial reciente</div>
+      ${history}
+    </div>
+  `;
+
+  document.getElementById("vehicleModal").querySelector("[data-close-vehicle]").addEventListener("click", closeVehicleModal);
+  document.getElementById("vehicleModal").querySelectorAll(".maint-check").forEach(btn => btn.addEventListener("click", () => openMantModal(v.patente, btn.dataset.item)));
+  document.getElementById("vehicleModal").querySelectorAll(".maint-postpone").forEach(btn => btn.addEventListener("click", () => openPostModal(v.patente, btn.dataset.item)));
+  document.getElementById("vehicleModal").querySelectorAll(".tire-mm-input").forEach(inp => inp.addEventListener("change", () => {
+    const pos = inp.dataset.pos;
+    const zonaSel = document.getElementById("vehicleModal").querySelector(`.tire-zona-select[data-pos="${pos}"]`);
+    guardarNeumatico(v.patente, pos, inp.value, zonaSel ? zonaSel.value : "");
+  }));
+  document.getElementById("vehicleModal").querySelectorAll(".tire-zona-select").forEach(sel => sel.addEventListener("change", () => {
+    const pos = sel.dataset.pos;
+    const mmInp = document.getElementById("vehicleModal").querySelector(`.tire-mm-input[data-pos="${pos}"]`);
+    guardarNeumatico(v.patente, pos, mmInp ? mmInp.value : "", sel.value);
+  }));
+  document.getElementById("vehicleModal").querySelectorAll(".salud-chip").forEach(chip => chip.addEventListener("click", () => cycleSalud(v.patente, chip.dataset.tipo)));
+  document.getElementById("addRepFromModal").addEventListener("click", () => openRepModal(v.patente));
+
+  document.getElementById("vehicleModalBackdrop").classList.add("open");
+}
+function closeVehicleModal(){ document.getElementById("vehicleModalBackdrop").classList.remove("open"); }
+
+const STATUS_TITLE = { red:"Vencidos", amber:"Próximos a vencer", green:"Al día" };
+
+function openFullListModal(status){
+  const zonaLabel = STATE.zona === "todas" ? "toda la flota" : STATE.zona;
+  const flat = getFlatItems().filter(it => it.status === status).sort((a,b) => a.restante - b.restante);
+
+  document.getElementById("fullListTitle").textContent = `${STATUS_TITLE[status]} — ${zonaLabel} (${flat.length})`;
+  const body = document.getElementById("fullListBody");
+  if(flat.length === 0){
+    body.innerHTML = `<div class="panel-empty">No hay ítems en este estado, en esta vista.</div>`;
+  }else{
+    body.innerHTML = flat.map(it => {
+      const rightText = it.restante > 0 ? `Faltan ${fmtKm(it.restante)} km` : `Vencido ${fmtKm(Math.abs(it.restante))} km`;
+      return `
+      <div class="list-row" data-patente="${it.patente}">
+        <span class="list-plate">${it.patente}<span class="movil-tag">M${it.movil}</span></span>
+        <span class="list-title">${it.item}</span>
+        <span class="list-right" style="color:${COLOR_VAR[it.status]}">${rightText}</span>
+      </div>`;
+    }).join("");
+    body.querySelectorAll(".list-row").forEach(row => row.addEventListener("click", () => {
+      closeFullListModal();
+      openVehicleModal(row.dataset.patente);
+    }));
+  }
+  document.getElementById("fullListModalBackdrop").classList.add("open");
+}
+function closeFullListModal(){ document.getElementById("fullListModalBackdrop").classList.remove("open"); }
+
+/* =========================================================================
+   Catálogo de mantenimientos (alta / edición / borrado)
+   ========================================================================= */
+const CATEGORIA_LABEL = { motor:"Motor y transmisión", frenos:"Frenos", neumaticos:"Neumáticos", correas:"Correas", otros:"Otros" };
+const iconTrash = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>`;
+
+function renderCatalogoList(){
+  const list = RAW_DATA.catalogo || [];
+  document.getElementById("catalogoList").innerHTML = list.map((c,idx) => `
+    <div class="cat-row" data-idx="${idx}">
+      <span class="cat-row-name">${c.item}</span>
+      <select class="cat-edit-categoria" data-idx="${idx}">
+        ${Object.entries(CATEGORIA_LABEL).map(([k,l]) => `<option value="${k}" ${c.categoria===k?"selected":""}>${l}</option>`).join("")}
+      </select>
+      <input type="number" class="cat-edit-intervalo" data-idx="${idx}" value="${c.intervaloKm}">
+      <span class="tire-mm-suffix">km</span>
+      <span class="cat-row-delete" data-idx="${idx}" title="Eliminar del catálogo">${iconTrash}</span>
+    </div>`).join("");
+
+  document.querySelectorAll(".cat-edit-categoria").forEach(sel => sel.addEventListener("change", () => {
+    const c = RAW_DATA.catalogo[sel.dataset.idx]; c.categoria = sel.value;
+    renderAll(); enviarRegistro("catalogo_set", { item:c.item, intervaloKm:c.intervaloKm, categoria:c.categoria });
+  }));
+  document.querySelectorAll(".cat-edit-intervalo").forEach(inp => inp.addEventListener("change", () => {
+    const c = RAW_DATA.catalogo[inp.dataset.idx]; c.intervaloKm = Number(inp.value)||0;
+    renderAll(); enviarRegistro("catalogo_set", { item:c.item, intervaloKm:c.intervaloKm, categoria:c.categoria });
+  }));
+  document.querySelectorAll(".cat-row-delete").forEach(btn => btn.addEventListener("click", () => {
+    const c = RAW_DATA.catalogo[btn.dataset.idx];
+    if(!confirm(`¿Eliminar "${c.item}" del catálogo? Los vehículos que ya lo tienen cargado no se borran, solo deja de aparecer como opción para agregar a otros.`)) return;
+    RAW_DATA.catalogo.splice(btn.dataset.idx, 1);
+    renderCatalogoList(); renderAll();
+    enviarRegistro("catalogo_eliminar", { item:c.item });
+  }));
+}
+
+function openCatalogoModal(){
+  renderCatalogoList();
+  document.getElementById("catNuevoNombre").value = "";
+  document.getElementById("catNuevoIntervalo").value = "";
+  document.getElementById("catalogoModalBackdrop").classList.add("open");
+}
+function closeCatalogoModal(){ document.getElementById("catalogoModalBackdrop").classList.remove("open"); }
+
+document.getElementById("catNuevoAgregar").addEventListener("click", () => {
+  const item = document.getElementById("catNuevoNombre").value.trim();
+  const categoria = document.getElementById("catNuevoCategoria").value;
+  const intervaloKm = Number(document.getElementById("catNuevoIntervalo").value);
+  if(!item || !intervaloKm){ showToast("Completá el nombre y el intervalo en km.", true); return; }
+  if((RAW_DATA.catalogo||[]).some(c => c.item.toLowerCase() === item.toLowerCase())){ showToast("Ya existe un ítem con ese nombre.", true); return; }
+  RAW_DATA.catalogo = RAW_DATA.catalogo || [];
+  RAW_DATA.catalogo.push({ item, intervaloKm, categoria });
+  document.getElementById("catNuevoNombre").value = "";
+  document.getElementById("catNuevoIntervalo").value = "";
+  renderCatalogoList();
+  renderAll();
+  enviarRegistro("catalogo_set", { item, intervaloKm, categoria });
+  showToast(`"${item}" agregado al catálogo. Ahora podés cargarlo en cualquier vehículo desde "Registrar mantenimiento".`);
+});
+
+document.getElementById("catalogoBtn").addEventListener("click", openCatalogoModal);
+document.querySelectorAll("[data-close-catalogo]").forEach(b => b.addEventListener("click", closeCatalogoModal));
+
+/* =========================================================================
+   Modales de registro (mantenimiento / reparación)
+   ========================================================================= */
+function fillVehicleSelect(select, selected){
+  select.innerHTML = STATE.vehicles.map(v => `<option value="${v.patente}">Móvil ${v.movil} — ${v.patente}${v.modelo?" — "+v.modelo:""}</option>`).join("");
+  if(selected) select.value = selected;
+}
+
+function openMantModal(prefillPatente, prefillItem){
+  const patSel = document.getElementById("mantPatente");
+  const itemSel = document.getElementById("mantItem");
+  fillVehicleSelect(patSel, prefillPatente);
+
+  function refreshItems(){
+    const v = STATE.vehicles.find(x => x.patente === patSel.value);
+    const yaCargados = new Set((v?v.items:[]).map(it=>it.item));
+    itemSel.innerHTML = (RAW_DATA.catalogo||[]).map(c =>
+      `<option value="${c.item}">${c.item}${yaCargados.has(c.item)?"":" (nuevo para este vehículo)"}</option>`
+    ).join("");
+    if(prefillItem) itemSel.value = prefillItem;
+    actualizarKmSugerido();
+  }
+  function actualizarKmSugerido(){
+    const v = STATE.vehicles.find(x => x.patente === patSel.value);
+    if(!v) { document.getElementById("mantKm").value = ""; document.getElementById("mantKmHint").textContent = ""; return; }
+    const cat = getCatalogoItem(itemSel.value);
+    const sugerido = v.km + (cat ? cat.intervaloKm : 0);
+    document.getElementById("mantKm").value = sugerido;
+    document.getElementById("mantKmHint").textContent = cat
+      ? `Km actual (${fmtKm(v.km)}) + intervalo del catálogo (${fmtKm(cat.intervaloKm)} km). Lo podés ajustar a mano.`
+      : "Este ítem no tiene intervalo en el catálogo todavía — completalo a mano.";
+  }
+  patSel.onchange = refreshItems;
+  itemSel.onchange = actualizarKmSugerido;
+  refreshItems();
+  document.getElementById("mantFecha").value = todayISO();
+  document.getElementById("mantNotas").value = "";
+  document.getElementById("mantModalBackdrop").classList.add("open");
+}
+function closeMantModal(){ document.getElementById("mantModalBackdrop").classList.remove("open"); }
+
+function openRepModal(prefillPatente){
+  const patSel = document.getElementById("repPatente");
+  fillVehicleSelect(patSel, prefillPatente);
+  patSel.onchange = () => {
+    const v = STATE.vehicles.find(x => x.patente === patSel.value);
+    document.getElementById("repKm").value = v ? v.km : "";
+  };
+  patSel.onchange();
+  document.getElementById("repFecha").value = todayISO();
+  document.getElementById("repDescripcion").value = "";
+  document.getElementById("repGravedad").value = "media";
+  document.getElementById("repModalBackdrop").classList.add("open");
+}
+function closeRepModal(){ document.getElementById("repModalBackdrop").classList.remove("open"); }
+
+function openPostModal(prefillPatente, prefillItem){
+  const patSel = document.getElementById("postPatente");
+  const itemSel = document.getElementById("postItem");
+  fillVehicleSelect(patSel, prefillPatente);
+
+  function refreshItems(){
+    const v = STATE.vehicles.find(x => x.patente === patSel.value);
+    itemSel.innerHTML = (v ? v.items : []).map(it => `<option value="${it.item}">${it.item}</option>`).join("");
+    if(prefillItem) itemSel.value = prefillItem;
+  }
+  patSel.onchange = refreshItems;
+  refreshItems();
+  document.getElementById("postKmExtra").value = "";
+  document.getElementById("postMotivo").value = "";
+  document.getElementById("postAutorizado").value = "";
+  document.getElementById("postFecha").value = todayISO();
+  document.getElementById("postModalBackdrop").classList.add("open");
+}
+function closePostModal(){ document.getElementById("postModalBackdrop").classList.remove("open"); }
+
+function registrarMantenimiento(payload){
+  const reg = RAW_DATA.mantenimiento.find(m => m.patente===payload.patente && m.item===payload.item);
+  if(reg) reg.proximoKm = payload.km;
+  else RAW_DATA.mantenimiento.push({ patente:payload.patente, item:payload.item, proximoKm:payload.km });
+  RAW_DATA.postergaciones = (RAW_DATA.postergaciones||[]).filter(p => !(p.patente===payload.patente && p.item===payload.item));
+  STATE.vehicles = buildVehicles(RAW_DATA);
+  closeMantModal();
+  // si el modal de detalle estaba abierto para este vehículo, lo refrescamos
+  if(document.getElementById("vehicleModalBackdrop").classList.contains("open")) openVehicleModal(payload.patente);
+  renderAll();
+  enviarRegistro("mantenimiento_realizado", payload);
+}
+
+function registrarReparacion(payload){
+  RAW_DATA.reparaciones = RAW_DATA.reparaciones || [];
+  RAW_DATA.reparaciones.push({ ...payload, fecha:new Date(payload.fecha) });
+  STATE.vehicles = buildVehicles(RAW_DATA);
+  closeRepModal();
+  if(document.getElementById("vehicleModalBackdrop").classList.contains("open")) openVehicleModal(payload.patente);
+  renderAll();
+  enviarRegistro("reparacion", payload);
+}
+
+function registrarPostergacion(payload){
+  const reg = RAW_DATA.mantenimiento.find(m => m.patente===payload.patente && m.item===payload.item);
+  if(reg) reg.proximoKm = (reg.proximoKm||0) + Number(payload.kmExtra||0);
+
+  RAW_DATA.postergaciones = (RAW_DATA.postergaciones||[]).filter(p => !(p.patente===payload.patente && p.item===payload.item));
+  RAW_DATA.postergaciones.push({ ...payload, fecha:new Date(payload.fecha) });
+  STATE.vehicles = buildVehicles(RAW_DATA);
+  closePostModal();
+  if(document.getElementById("vehicleModalBackdrop").classList.contains("open")) openVehicleModal(payload.patente);
+  renderAll();
+  enviarRegistro("postergacion", payload);
+}
+
+async function enviarRegistro(tipo, payload){
+  if(!CONFIG.API_URL){ showToast("Guardado solo en esta pantalla. Conectá la API para que se guarde para todo el equipo.", true); return; }
+  try{
+    await fetch(CONFIG.API_URL, { method:"POST", mode:"no-cors", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body: JSON.stringify({ tipo, ...payload }) });
+    showToast("Guardado y sincronizado.");
+  }catch(e){
+    console.warn("No se pudo guardar en el servidor:", e);
+    showToast("No se pudo conectar al servidor. Quedó guardado solo acá.", true);
+  }
+}
+
+/* =========================================================================
+   Carga de datos
+   ========================================================================= */
+async function loadAndRender(){
+  let data, isMock = CONFIG.USE_MOCK_DATA;
+  try{
+    data = isMock ? buildMockData() : await loadRealData();
+  }catch(e){
+    console.warn("No se pudo conectar a Google Sheets, se muestran datos de ejemplo.", e);
+    data = buildMockData();
+    isMock = true;
+  }
+  RAW_DATA = data;
+  STATE.vehicles = buildVehicles(data);
+  document.getElementById("modeBadge").textContent = isMock ? "Tu Excel (sin Sheets)" : "Datos en vivo";
+  document.getElementById("syncInfo").textContent = "Actualizado " + new Date().toLocaleTimeString("es-AR");
+  renderAll();
+}
+
+/* =========================================================================
+   Eventos generales
+   ========================================================================= */
+document.getElementById("searchInput").addEventListener("input", e => { STATE.search = e.target.value; renderGrid(); });
+document.getElementById("refreshBtn").addEventListener("click", e => {
+  e.currentTarget.classList.add("spin");
+  loadAndRender().finally(() => setTimeout(()=>e.currentTarget.classList.remove("spin"), 400));
+});
+document.getElementById("connectBtn").addEventListener("click", () => document.getElementById("infoModalBackdrop").classList.add("open"));
+document.getElementById("openMantBtn").addEventListener("click", () => openMantModal());
+document.getElementById("openRepBtn").addEventListener("click", () => openRepModal());
+document.querySelectorAll("[data-close-info]").forEach(b => b.addEventListener("click", () => document.getElementById("infoModalBackdrop").classList.remove("open")));
+document.querySelectorAll("[data-close-mant]").forEach(b => b.addEventListener("click", closeMantModal));
+document.querySelectorAll("[data-close-rep]").forEach(b => b.addEventListener("click", closeRepModal));
+document.querySelectorAll("[data-close-post]").forEach(b => b.addEventListener("click", closePostModal));
+
+document.getElementById("mantSubmit").addEventListener("click", () => {
+  const patente = document.getElementById("mantPatente").value;
+  const item = document.getElementById("mantItem").value;
+  const km = Number(document.getElementById("mantKm").value);
+  const fecha = document.getElementById("mantFecha").value;
+  const notas = document.getElementById("mantNotas").value;
+  if(!patente || !item || !km){ showToast("Completá vehículo, ítem y km.", true); return; }
+  registrarMantenimiento({ patente, item, km, fecha, notas });
+});
+
+document.getElementById("repSubmit").addEventListener("click", () => {
+  const patente = document.getElementById("repPatente").value;
+  const km = Number(document.getElementById("repKm").value);
+  const fecha = document.getElementById("repFecha").value;
+  const descripcion = document.getElementById("repDescripcion").value.trim();
+  const gravedad = document.getElementById("repGravedad").value;
+  if(!patente || !descripcion){ showToast("Completá vehículo y descripción.", true); return; }
+  registrarReparacion({ patente, km, fecha, descripcion, gravedad });
+});
+
+document.getElementById("postSubmit").addEventListener("click", () => {
+  const patente = document.getElementById("postPatente").value;
+  const item = document.getElementById("postItem").value;
+  const kmExtra = Number(document.getElementById("postKmExtra").value);
+  const motivo = document.getElementById("postMotivo").value.trim();
+  const autorizadoPor = document.getElementById("postAutorizado").value.trim();
+  const fecha = document.getElementById("postFecha").value;
+  if(!patente || !item || !kmExtra || !motivo){ showToast("Completá vehículo, ítem, km y motivo.", true); return; }
+  registrarPostergacion({ patente, item, kmExtra, motivo, autorizadoPor, fecha });
+});
+
+document.querySelectorAll("[data-close-fulllist]").forEach(b => b.addEventListener("click", closeFullListModal));
+[document.getElementById("vehicleModalBackdrop"), document.getElementById("infoModalBackdrop"), document.getElementById("mantModalBackdrop"), document.getElementById("repModalBackdrop"), document.getElementById("postModalBackdrop"), document.getElementById("fullListModalBackdrop"), document.getElementById("catalogoModalBackdrop")].forEach(bd => {
+  bd.addEventListener("click", e => { if(e.target === bd) bd.classList.remove("open"); });
+});
+document.addEventListener("keydown", e => {
+  if(e.key === "Escape") document.querySelectorAll(".modal-backdrop.open").forEach(bd => bd.classList.remove("open"));
+});
+
+loadAndRender();
+
+if(CONFIG.AUTO_REFRESH_MINUTES > 0){
+  setInterval(() => {
+    const anyOpen = document.querySelector(".modal-backdrop.open");
+    if(anyOpen) return;
+    loadAndRender();
+  }, CONFIG.AUTO_REFRESH_MINUTES * 60 * 1000);
+}
+</script>
+</body>
+</html>
