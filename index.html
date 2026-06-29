@@ -832,6 +832,16 @@ function parseGvizDate(v){
     const p = v.replace("Date(","").replace(")","").split(",").map(Number);
     return new Date(p[0], p[1], p[2]);
   }
+  // Fechas como texto "DD/MM/YYYY" (así las escribe AppSheet) — el Date() genérico
+  // de JS las confunde con el formato de EEUU (MM/DD/YYYY) y da fechas mal o inválidas.
+  if(typeof v === "string"){
+    const m = v.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if(m){
+      const dia = Number(m[1]), mes = Number(m[2]), anio = Number(m[3]);
+      const d = new Date(anio, mes-1, dia);
+      return isNaN(d.getTime()) ? null : d;
+    }
+  }
   const d = new Date(v);
   return isNaN(d.getTime()) ? null : d;
 }
@@ -906,16 +916,25 @@ async function loadRealData(){
   try{
     if(CONFIG.SHEETS.fotosUrls.id){
       const fu = await fetchSheetRows(CONFIG.SHEETS.fotosUrls.id, CONFIG.SHEETS.fotosUrls.sheetName);
+      console.log("DIAGNÓSTICO Fotos_URLs — filas leídas:", fu.length);
+      console.log("DIAGNÓSTICO Fotos_URLs — primera fila:", fu.length ? JSON.stringify(fu[0]) : "(sin filas — ¿corriste actualizarFotosURL?)");
       const Cf = C.fotosUrls;
       const porId = {};
       fu.forEach(r => { porId[r[Cf.idInspeccion]] = r; });
+      let matcheadas = 0;
       inspecciones.forEach(insp => {
         const r = porId[insp.idInspeccion];
-        if(r) insp.fotos = {
-          frente: r[Cf.fotoFrente] || null, trasera: r[Cf.fotoTrasera] || null,
-          lateralIzq: r[Cf.fotoLateralIzq] || null, lateralDer: r[Cf.fotoLateralDer] || null
-        };
+        if(r){
+          matcheadas++;
+          insp.fotos = {
+            frente: r[Cf.fotoFrente] || null, trasera: r[Cf.fotoTrasera] || null,
+            lateralIzq: r[Cf.fotoLateralIzq] || null, lateralDer: r[Cf.fotoLateralDer] || null
+          };
+        }
       });
+      console.log("DIAGNÓSTICO Fotos_URLs — inspecciones con foto encontrada:", matcheadas, "de", inspecciones.length);
+    } else {
+      console.log("DIAGNÓSTICO Fotos_URLs — CONFIG.SHEETS.fotosUrls.id está vacío, no se intentó leer.");
     }
   }catch(e){ console.warn("Todavía no hay hoja de Fotos_URLs legible (o no se generó ninguna fila todavía):", e); }
 
