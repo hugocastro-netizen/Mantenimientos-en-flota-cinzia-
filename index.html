@@ -123,6 +123,44 @@
   .kpi-bar-fill{height:100%; border-radius:999px; transition:width .4s ease;}
   .kpi-subnote{font-size:11.5px; color:var(--muted); margin:-12px 0 20px;}
 
+  /* ---- Pestañas superiores ---- */
+  .top-tabs{display:flex; gap:2px; background:var(--bg); border-bottom:1px solid var(--border); padding:0 16px;}
+  .top-tab{
+    background:transparent; border:none; color:var(--muted); font-size:13px; font-weight:600;
+    padding:12px 16px; cursor:pointer; border-bottom:2px solid transparent;
+  }
+  .top-tab:hover{color:var(--text);}
+  .top-tab.active{color:var(--accent); border-bottom-color:var(--accent);}
+
+  /* ---- Calendario simplificado ---- */
+  .cal-nav{
+    width:24px; height:24px; border-radius:6px; border:1px solid var(--border); background:var(--panel-2);
+    color:var(--text); display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:14px;
+  }
+  .cal-nav:hover{border-color:var(--accent);}
+  .cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-top:6px;}
+  .cal-dow{font-size:10.5px; color:var(--muted); text-align:center; padding:4px 0; text-transform:uppercase;}
+  .cal-day{
+    aspect-ratio:1; border-radius:7px; border:1px solid var(--border); background:var(--panel-2);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+    font-size:11px; cursor:pointer; position:relative;
+  }
+  .cal-day.empty{visibility:hidden; cursor:default;}
+  .cal-day:hover{border-color:var(--accent);}
+  .cal-day .cal-dots{display:flex; gap:2px;}
+  .cal-day .cal-dot{width:5px; height:5px; border-radius:50%;}
+  .cal-day.selected{border-color:var(--accent); background:var(--accent-soft);}
+
+  .cal-banner{
+    display:flex; align-items:center; gap:8px; padding:9px 12px; border-radius:8px; font-size:12px; font-weight:600;
+    margin:10px 0 4px;
+  }
+  .cal-banner svg{width:15px; height:15px; flex:none;}
+  .cal-banner.ok{background:var(--green-bg); color:var(--green);}
+  .cal-banner.warn{background:var(--amber-bg); color:var(--amber);}
+  .cal-banner.error{background:var(--red-bg); color:var(--red);}
+  .cal-banner.neutral{background:var(--panel-2); color:var(--muted); font-weight:500;}
+
   /* ---- Estadística de mantenimientos por ítem (general / por sucursal) ---- */
   .item-stats{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:14px 18px; margin-bottom:20px;}
   .item-stats-head{display:flex; justify-content:space-between; align-items:baseline; font-size:12.5px; margin-bottom:9px;}
@@ -400,9 +438,14 @@
 </head>
 <body>
 
+<div class="top-tabs">
+  <button class="top-tab active" data-tab="flota">🚐 Flota</button>
+  <button class="top-tab" data-tab="reclamos">📋 Reclamos &amp; NC</button>
+</div>
+
 <div class="app-shell">
 
-  <aside class="sidebar">
+  <aside class="sidebar" id="sidebarFlota">
     <div class="brand">
       <div class="brand-mark">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17h2l1.5-5h11L19 17h2M5 17a2 2 0 1 0 4 0 2 2 0 1 0-4 0zm10 0a2 2 0 1 0 4 0 2 2 0 1 0-4 0z"/></svg>
@@ -444,7 +487,7 @@
     </div>
   </aside>
 
-  <div class="main">
+  <div class="main" id="mainFlota">
     <div class="topbar">
       <h1>Resumen de flota</h1>
       <div class="search">
@@ -476,6 +519,90 @@
       <div class="grid" id="vehicleGrid"></div>
 
       <footer class="note">Conectado a Google Sheets — sin backend adicional para lectura, con un endpoint propio para los registros.</footer>
+    </div>
+  </div>
+
+  <aside class="sidebar" id="sidebarReclamos" style="display:none;">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      </div>
+      <div class="brand-title">Reclamos &amp; NC</div>
+      <div class="brand-sub">Reservas en viaje</div>
+    </div>
+
+    <div>
+      <div class="side-label">Sede</div>
+      <div class="filter-list" id="recSedeFilterList"></div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; min-height:0; flex:1;">
+      <div class="side-label">Mes</div>
+      <div class="filter-list filter-list-scroll" id="recMesFilterList"></div>
+    </div>
+
+    <div class="actions-block">
+      <button class="btn btn-primary btn-block" id="openReservaBtn">
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg>
+        Cargar reserva
+      </button>
+      <button class="btn btn-block" id="openRecBtn">
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        Cargar reclamo
+      </button>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="mode-row"><span>Estado</span><span class="badge-demo" id="modeBadgeRec">—</span></div>
+      <div class="mode-row"><span id="syncInfoRec">—</span></div>
+      <button class="btn btn-ghost btn-block" id="refreshBtnRec">
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 4v6h-6"/></svg>
+        Actualizar
+      </button>
+    </div>
+  </aside>
+
+  <div class="main" id="mainReclamos" style="display:none;">
+    <div class="topbar">
+      <h1>Reclamos &amp; No Conformidades</h1>
+    </div>
+    <div class="content">
+      <div class="kpis" id="recKpiRow"></div>
+      <div class="kpi-subnote" id="recKpiSubnote"></div>
+
+      <div class="panel" style="margin-bottom:20px;">
+        <div class="panel-title">Pendientes de cargar (check-outs sin reclamo registrado)</div>
+        <div id="recPendientesList"></div>
+      </div>
+
+      <div class="panel-row">
+        <div class="panel">
+          <div class="panel-title">Reclamos por sede</div>
+          <div id="recSedeList"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Pareto por categoría</div>
+          <div id="recCategoriaList"></div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-bottom:20px;">
+        <div class="panel-title">
+          <span id="recCalMesLabel">Calendario</span>
+          <span style="margin-left:auto; display:flex; gap:6px;">
+            <span class="cal-nav" id="recCalPrev">‹</span>
+            <span class="cal-nav" id="recCalNext">›</span>
+          </span>
+        </div>
+        <div id="recCalEstadoBanner"></div>
+        <div class="cal-grid" id="recCalGrid"></div>
+        <div id="recCalDayDetail" style="margin-top:10px;"></div>
+      </div>
+
+      <div class="panel" style="margin-bottom:20px;">
+        <div class="panel-title">No Conformidades históricas — por categoría (referencia)</div>
+        <div id="recNCList"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -566,6 +693,46 @@
   </div>
 </div>
 
+<!-- Modal cargar reserva (calendario) -->
+<div class="modal-backdrop" id="reservaModalBackdrop">
+  <div class="modal form-modal">
+    <button class="modal-close" data-close-reserva>✕</button>
+    <h3>Cargar reserva</h3>
+    <p class="form-hint">Se puede cargar con anticipación, antes de que el viaje empiece. Cuando llegue la fecha de vuelta, va a aparecer sola en "Pendientes de cargar" para que digas si tuvo reclamo.</p>
+    <div class="field"><label>Móvil</label><input type="number" id="reservaMovil"></div>
+    <div class="field"><label>N° de reserva</label><input type="text" id="reservaNumero"></div>
+    <div class="field"><label>Sede</label>
+      <select id="reservaSede"><option value="CBA">Córdoba</option><option value="BSAS">Buenos Aires</option><option value="BRC">Bariloche</option><option value="SALTA">Salta</option></select>
+    </div>
+    <div class="field"><label>Cliente (opcional)</label><input type="text" id="reservaCliente"></div>
+    <div class="field"><label>Fecha de salida</label><input type="date" id="reservaFechaInicio"></div>
+    <div class="field"><label>Fecha de vuelta</label><input type="date" id="reservaFechaFin"></div>
+    <button class="btn btn-primary btn-block" id="reservaSubmit">Guardar</button>
+  </div>
+</div>
+
+<!-- Modal cargar reclamo -->
+<div class="modal-backdrop" id="recModalBackdrop">
+  <div class="modal form-modal">
+    <button class="modal-close" data-close-rec>✕</button>
+    <h3>Cargar reclamo de reserva</h3>
+    <p class="form-hint">Una fila por reserva. Si ya existe una con el mismo móvil + N° de reserva, se actualiza en vez de duplicarse.</p>
+    <div class="field"><label>Móvil</label><input type="number" id="recMovil"></div>
+    <div class="field"><label>N° de reserva</label><input type="text" id="recNumeroReserva"></div>
+    <div class="field"><label>Sede</label>
+      <select id="recSede"><option value="CBA">Córdoba</option><option value="BSAS">Buenos Aires</option><option value="BRC">Bariloche</option><option value="SALTA">Salta</option></select>
+    </div>
+    <div class="field"><label>¿Tuvo reclamo?</label>
+      <select id="recReclamo"><option value="NO">No</option><option value="SI">Sí</option></select>
+    </div>
+    <div class="field"><label>Categoría</label>
+      <input type="text" id="recCategoria" placeholder="Ej: Agua/Sanitario, Eléctrico, Mecánica...">
+    </div>
+    <div class="field"><label>Detalle</label><textarea id="recDetalle" rows="3" placeholder="Qué pasó, según el cliente o el inspector"></textarea></div>
+    <button class="btn btn-primary btn-block" id="recSubmit">Guardar</button>
+  </div>
+</div>
+
 <!-- Modal conectar datos -->
 <div class="modal-backdrop" id="infoModalBackdrop">
   <div class="modal info-modal">
@@ -606,20 +773,29 @@ const CONFIG = {
 
   SHEETS: {
     inspecciones:  { id: "1YzlQQbzxtxnxxSvt74f1T4obMGNpZOxpnTcCBKlVZgc", sheetName: "" }, // sheetName vacío = usa la primera pestaña (gid=0)
+    fotosUrls:     { id: "1YzlQQbzxtxnxxSvt74f1T4obMGNpZOxpnTcCBKlVZgc", sheetName: "Fotos_URLs" }, // misma planilla, pestaña separada — la crea sola el script
     mantenimiento: { id: "17619ZhduzpgC0mOhb9Nzyo4OSlhLudYeut1ysda0I-4", sheetName: "" }, // sheetName vacío = primera pestaña
     reparaciones:  { id: "", sheetName: "Reparaciones" }, // opcional, se va a crear sola al primer registro
     neumaticos:    { id: "", sheetName: "Neumaticos" },   // opcional, idem
     postergaciones:{ id: "", sheetName: "Postergaciones" }, // opcional, idem
     salud:         { id: "", sheetName: "Salud" }, // opcional, idem
-    catalogo:      { id: "", sheetName: "Catalogo_Mantenimiento" } // opcional, idem
+    catalogo:      { id: "", sheetName: "Catalogo_Mantenimiento" }, // opcional, idem
+    reclamos:      { id: "", sheetName: "" }, // hoja Reclamos.csv importada — pegá el ID cuando la tengas
+    noConformidades: { id: "", sheetName: "" }, // hoja NoConformidades.csv importada — opcional, solo referencia histórica
+    calendarioReservas: { id: "", sheetName: "" }, // la va a llenar el robot de sincronización (cuando lo armemos)
+    calendarioEstado: { id: "", sheetName: "" } // 1 fila que el robot actualiza cada corrida: UltimaCorrida / Exito / Mensaje / ReservasEncontradas
   },
 
   COLUMNS: {
     inspecciones: {
+      idInspeccion:"ID_inspeccion",
       movil:"numero_de_movil", sede:"sede", km:"km_actual", fecha:"fecha_inspeccion", inspector:"nombre_usuario",
-      // las 4 fotos exteriores — son la RUTA (no la URL todavía). Hace falta agregar
-      // 4 columnas nuevas en tu hoja real con estos nombres + "_URL" para que el script
-      // de fotos las complete (ver fotos-appsheet-a-drive-url.gs actualizado).
+      tipoOperacion:"tipo_operacion", numeroReserva:"numero_reserva"
+      // Las fotos NO se leen de esta hoja — viven en una pestaña separada (Fotos_URLs)
+      // para no tocar nunca la estructura que usa AppSheet. Se unen por ID_inspeccion.
+    },
+    fotosUrls: {
+      idInspeccion:"ID_inspeccion",
       fotoFrente:"foto_frente_URL", fotoTrasera:"foto_trasero_URL",
       fotoLateralIzq:"foto_lateral_izquierdo_URL", fotoLateralDer:"foto_lateral_derecho_URL"
     },
@@ -628,6 +804,10 @@ const CONFIG = {
     neumaticos: { patente:"Patente", posicion:"Posicion", mm:"Mm", zona:"Zona" },
     salud: { patente:"Patente", tipo:"Tipo", estado:"Estado" },
     catalogo: { item:"Item", intervaloKm:"IntervaloKm", categoria:"Categoria" },
+    reclamos: { mes:"Mes", movil:"Movil", numeroReserva:"NumeroReserva", sede:"Sede", reclamo:"Reclamo", categoria:"Categoria", detalle:"Detalle" },
+    noConformidades: { tipo:"Tipo", movil:"Movil", problema:"Problema", categoria:"Categoria" },
+    calendarioReservas: { movil:"Movil", numeroReserva:"NumeroReserva", fechaInicio:"FechaInicio", fechaFin:"FechaFin", sede:"Sede", cliente:"Cliente", estado:"Estado" },
+    calendarioEstado: { ultimaCorrida:"UltimaCorrida", exito:"Exito", mensaje:"Mensaje", reservasEncontradas:"ReservasEncontradas" },
     postergaciones: { patente:"Patente", item:"Item", motivo:"Motivo", autorizadoPor:"AutorizadoPor", fecha:"Fecha" }
   },
 
@@ -713,17 +893,31 @@ async function loadRealData(){
     const patente = MOVIL_A_PATENTE[movil];
     if(!patente) movilesSinMapear.add(movil);
     return {
-      movil, patente, modelo:null, zona: MOVIL_A_ZONA[movil] || null, sedeInspeccion: r[C.inspecciones.sede],
+      movil, patente, idInspeccion: r[C.inspecciones.idInspeccion], modelo:null, zona: MOVIL_A_ZONA[movil] || null, sedeInspeccion: r[C.inspecciones.sede],
       km: Number(r[C.inspecciones.km]) || 0, fecha: parseGvizDate(r[C.inspecciones.fecha]),
       inspector: r[C.inspecciones.inspector],
-      fotos: {
-        frente: r[C.inspecciones.fotoFrente] || null,
-        trasera: r[C.inspecciones.fotoTrasera] || null,
-        lateralIzq: r[C.inspecciones.fotoLateralIzq] || null,
-        lateralDer: r[C.inspecciones.fotoLateralDer] || null
-      }
+      tipoOperacion: r[C.inspecciones.tipoOperacion] || null,
+      numeroReserva: r[C.inspecciones.numeroReserva] != null ? String(r[C.inspecciones.numeroReserva]).trim() : null,
+      fotos: { frente:null, trasera:null, lateralIzq:null, lateralDer:null } // se completan abajo, uniendo con Fotos_URLs
     };
   }).filter(insp => insp.patente); // las que no tienen móvil mapeado se descartan acá (quedan en movilesSinMapear)
+
+  // Las fotos viven en una pestaña separada (no en la que usa AppSheet) — se unen por ID_inspeccion.
+  try{
+    if(CONFIG.SHEETS.fotosUrls.id){
+      const fu = await fetchSheetRows(CONFIG.SHEETS.fotosUrls.id, CONFIG.SHEETS.fotosUrls.sheetName);
+      const Cf = C.fotosUrls;
+      const porId = {};
+      fu.forEach(r => { porId[r[Cf.idInspeccion]] = r; });
+      inspecciones.forEach(insp => {
+        const r = porId[insp.idInspeccion];
+        if(r) insp.fotos = {
+          frente: r[Cf.fotoFrente] || null, trasera: r[Cf.fotoTrasera] || null,
+          lateralIzq: r[Cf.fotoLateralIzq] || null, lateralDer: r[Cf.fotoLateralDer] || null
+        };
+      });
+    }
+  }catch(e){ console.warn("Todavía no hay hoja de Fotos_URLs legible (o no se generó ninguna fila todavía):", e); }
 
   if(movilesSinMapear.size) console.warn("Móviles en Inspecciones sin patente asociada (revisar MOVIL_A_PATENTE):", JSON.stringify([...movilesSinMapear]));
 
@@ -787,7 +981,55 @@ async function loadRealData(){
     }
   }catch(e){ console.warn("Todavía no hay hoja de Postergaciones legible:", e); }
 
-  return { inspecciones, mantenimiento, reparaciones, neumaticos, salud, catalogo, postergaciones };
+  let reclamos = [];
+  try{
+    if(CONFIG.SHEETS.reclamos.id){
+      const rec = await fetchSheetRows(CONFIG.SHEETS.reclamos.id, CONFIG.SHEETS.reclamos.sheetName);
+      reclamos = rec.map(r => ({
+        mes:r[C.reclamos.mes], movil:Number(r[C.reclamos.movil])||null, numeroReserva:String(r[C.reclamos.numeroReserva]??"").trim(),
+        sede:(r[C.reclamos.sede]||"").toUpperCase(), reclamo:(r[C.reclamos.reclamo]||"NO").toUpperCase(),
+        categoria:r[C.reclamos.categoria]||"", detalle:r[C.reclamos.detalle]||""
+      }));
+    }
+  }catch(e){ console.warn("Todavía no hay hoja de Reclamos legible:", e); }
+
+  let noConformidades = [];
+  try{
+    if(CONFIG.SHEETS.noConformidades.id){
+      const nc = await fetchSheetRows(CONFIG.SHEETS.noConformidades.id, CONFIG.SHEETS.noConformidades.sheetName);
+      noConformidades = nc.map(r => ({
+        tipo:r[C.noConformidades.tipo], movil:Number(r[C.noConformidades.movil])||null,
+        problema:r[C.noConformidades.problema]||"", categoria:r[C.noConformidades.categoria]||"Otros"
+      }));
+    }
+  }catch(e){ console.warn("Todavía no hay hoja de NoConformidades legible:", e); }
+
+  let calendarioReservas = [];
+  try{
+    if(CONFIG.SHEETS.calendarioReservas.id){
+      const cr = await fetchSheetRows(CONFIG.SHEETS.calendarioReservas.id, CONFIG.SHEETS.calendarioReservas.sheetName);
+      calendarioReservas = cr.map(r => ({
+        movil:Number(r[C.calendarioReservas.movil])||null, numeroReserva:String(r[C.calendarioReservas.numeroReserva]??"").trim(),
+        fechaInicio:parseGvizDate(r[C.calendarioReservas.fechaInicio]), fechaFin:parseGvizDate(r[C.calendarioReservas.fechaFin]),
+        sede:r[C.calendarioReservas.sede], cliente:r[C.calendarioReservas.cliente], estado:r[C.calendarioReservas.estado]
+      }));
+    }
+  }catch(e){ console.warn("Todavía no hay hoja de CalendarioReservas legible:", e); }
+
+  let calendarioEstado = null;
+  try{
+    if(CONFIG.SHEETS.calendarioEstado.id){
+      const ce = await fetchSheetRows(CONFIG.SHEETS.calendarioEstado.id, CONFIG.SHEETS.calendarioEstado.sheetName);
+      if(ce[0]) calendarioEstado = {
+        ultimaCorrida: parseGvizDate(ce[0][C.calendarioEstado.ultimaCorrida]),
+        exito: String(ce[0][C.calendarioEstado.exito]).toUpperCase()==="TRUE" || String(ce[0][C.calendarioEstado.exito]).toUpperCase()==="SI",
+        mensaje: ce[0][C.calendarioEstado.mensaje]||"",
+        reservasEncontradas: Number(ce[0][C.calendarioEstado.reservasEncontradas])||0
+      };
+    }
+  }catch(e){ console.warn("Todavía no hay hoja de CalendarioEstado legible:", e); }
+
+  return { inspecciones, mantenimiento, reparaciones, neumaticos, salud, catalogo, postergaciones, reclamos, noConformidades, calendarioReservas, calendarioEstado };
 }
 
 /* =========================================================================
@@ -912,7 +1154,7 @@ function buildMockData(){
 
   const catalogo = CATALOGO_DEFAULT.map(c => ({...c}));
 
-  return { inspecciones, mantenimiento, reparaciones, neumaticos, salud, catalogo, postergaciones, _today: today };
+  return { inspecciones, mantenimiento, reparaciones, neumaticos, salud, catalogo, postergaciones, reclamos:[], noConformidades:[], calendarioReservas:[], calendarioEstado:null, _today: today };
 }
 
 /* =========================================================================
@@ -1014,7 +1256,11 @@ function buildVehicles(data){
    Estado y utilidades de render
    ========================================================================= */
 let RAW_DATA = null;
-let STATE = { vehicles:[], filter:"all", zona:"todas", search:"" };
+let STATE = {
+  vehicles:[], filter:"all", zona:"todas", search:"", tab:"flota",
+  recSede:"todas", recMes:"todas",
+  recCalYear: new Date().getFullYear(), recCalMonth: new Date().getMonth()
+};
 
 function fmtKm(n){ return Math.round(n).toLocaleString("es-AR"); }
 function fmtFecha(d){ return d ? new Date(d).toLocaleDateString("es-AR") : "—"; }
@@ -1034,6 +1280,8 @@ function showToast(msg, warn){
 
 const iconWarning = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.86l-8.2 14.2A1.5 1.5 0 0 0 3.4 20.5h17.2a1.5 1.5 0 0 0 1.3-2.44l-8.2-14.2a1.5 1.5 0 0 0-2.6 0z"/></svg>`;
 const iconPin = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-7.2 7-12a7 7 0 1 0-14 0c0 4.8 7 12 7 12z"/><circle cx="12" cy="9" r="2.4"/></svg>`;
+const iconInfo = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>`;
+const iconCheck = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9"/></svg>`;
 
 /* ---- Categorías visuales de mantenimiento ---- */
 const ICON_MOTOR = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 13a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V19a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 13a1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 7a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 2.6a1.7 1.7 0 0 0 1-1.55V1a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 7a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z"/></svg>`;
@@ -1291,6 +1539,291 @@ function renderDocumentos(){
 function renderKPISubnote(){
   const scoped = getZonaScoped();
   document.getElementById("kpiSubnote").textContent = `${scoped.length} vehículo${scoped.length!==1?"s":""} en esta vista`;
+}
+
+/* =========================================================================
+   PESTAÑA: Reclamos & No Conformidades
+   ========================================================================= */
+const MESES_ORDEN = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+const SEDE_LABEL = { CBA:"Córdoba", BSAS:"Buenos Aires", BRC:"Bariloche", SALTA:"Salta" };
+
+function switchTab(tab){
+  STATE.tab = tab;
+  document.querySelectorAll(".top-tab").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+  document.getElementById("sidebarFlota").style.display = tab==="flota" ? "flex" : "none";
+  document.getElementById("mainFlota").style.display = tab==="flota" ? "flex" : "none";
+  document.getElementById("sidebarReclamos").style.display = tab==="reclamos" ? "flex" : "none";
+  document.getElementById("mainReclamos").style.display = tab==="reclamos" ? "flex" : "none";
+  if(tab === "reclamos") renderReclamosTab();
+}
+
+function getReclamosScoped(){
+  return (RAW_DATA.reclamos||[]).filter(r =>
+    (STATE.recSede==="todas" || r.sede===STATE.recSede) &&
+    (STATE.recMes==="todas" || r.mes===STATE.recMes)
+  );
+}
+
+// Pendientes de cargar reclamo: check-outs de Inspecciones, MÁS reservas cargadas a mano
+// cuya fecha de vuelta ya llegó — en ambos casos, sin un reclamo registrado todavía.
+function getPendientes(){
+  const cargados = new Set((RAW_DATA.reclamos||[]).map(r => `${r.movil}|${r.numeroReserva}`));
+  const hoy = new Date(); hoy.setHours(23,59,59,999);
+
+  const deInspecciones = (RAW_DATA.inspecciones||[])
+    .filter(i => i.tipoOperacion && i.tipoOperacion.toLowerCase().includes("check-out") && i.numeroReserva)
+    .filter(i => !cargados.has(`${i.movil}|${i.numeroReserva}`))
+    .map(i => ({ movil:i.movil, numeroReserva:i.numeroReserva, sede:i.sedeInspeccion, fecha:i.fecha, origen:"Inspección" }));
+
+  const deReservas = (RAW_DATA.calendarioReservas||[])
+    .filter(r => r.fechaFin && new Date(r.fechaFin) <= hoy)
+    .filter(r => !cargados.has(`${r.movil}|${r.numeroReserva}`))
+    .map(r => ({ movil:r.movil, numeroReserva:r.numeroReserva, sede:r.sede, fecha:r.fechaFin, origen:"Reserva cargada" }));
+
+  // si la misma reserva aparece en los dos orígenes, nos quedamos con una sola
+  const vistos = new Set();
+  return [...deInspecciones, ...deReservas]
+    .filter(p => { const k=`${p.movil}|${p.numeroReserva}`; if(vistos.has(k)) return false; vistos.add(k); return true; })
+    .sort((a,b) => (b.fecha||0) - (a.fecha||0));
+}
+
+function renderRecSidebarFilters(){
+  const all = RAW_DATA.reclamos||[];
+  const sedes = [...new Set(all.map(r=>r.sede).filter(Boolean))].sort();
+  const sedeDefs = [{key:"todas",label:"Todas"}, ...sedes.map(s=>({key:s, label:SEDE_LABEL[s]||s}))];
+  document.getElementById("recSedeFilterList").innerHTML = sedeDefs.map(s => {
+    const count = s.key==="todas" ? all.length : all.filter(r=>r.sede===s.key).length;
+    return `<button class="filter-item ${STATE.recSede===s.key?"active":""}" data-recsede="${s.key}">${s.label}<span class="count">${count}</span></button>`;
+  }).join("");
+  document.querySelectorAll("[data-recsede]").forEach(b => b.addEventListener("click", () => { STATE.recSede = b.dataset.recsede; renderReclamosTab(); }));
+
+  const meses = [...new Set(all.map(r=>r.mes).filter(Boolean))].sort((a,b)=>MESES_ORDEN.indexOf(a)-MESES_ORDEN.indexOf(b));
+  const mesDefs = [{key:"todas",label:"Todos"}, ...meses.map(m=>({key:m,label:m}))];
+  document.getElementById("recMesFilterList").innerHTML = mesDefs.map(m => {
+    const count = m.key==="todas" ? all.length : all.filter(r=>r.mes===m.key).length;
+    return `<button class="filter-item ${STATE.recMes===m.key?"active":""}" data-recmes="${m.key}">${m.label}<span class="count">${count}</span></button>`;
+  }).join("");
+  document.querySelectorAll("[data-recmes]").forEach(b => b.addEventListener("click", () => { STATE.recMes = b.dataset.recmes; renderReclamosTab(); }));
+}
+
+function renderRecKPIs(){
+  const scoped = getReclamosScoped();
+  const total = scoped.length;
+  const con = scoped.filter(r=>r.reclamo==="SI").length;
+  const sin = total - con;
+  const tasa = total ? Math.round(con/total*100) : 0;
+  const cards = [
+    { label:"Total reservas", value:total, frac:1, color:"var(--accent)" },
+    { label:"Con reclamo", value:con, frac:total?con/total:0, color:"var(--red)" },
+    { label:"Sin reclamo", value:sin, frac:total?sin/total:0, color:"var(--green)" },
+    { label:"Tasa de reclamo", value:`${tasa}%`, frac:tasa/100, color:tasa>=40?"var(--red)":tasa>=20?"var(--amber)":"var(--green)" }
+  ];
+  document.getElementById("recKpiRow").innerHTML = cards.map(c => `
+    <div class="kpi-card">
+      <div class="kpi-value">${c.value}</div>
+      <div class="kpi-label">${c.label}</div>
+      <div class="kpi-bar"><div class="kpi-bar-fill" style="width:${c.frac*100}%; background:${c.color}"></div></div>
+    </div>`).join("");
+  document.getElementById("recKpiSubnote").textContent = `${RAW_DATA.noConformidades?.length||0} NC históricas de referencia`;
+}
+
+function renderRecPendientes(){
+  const pendientes = getPendientes();
+  const el = document.getElementById("recPendientesList");
+  if(pendientes.length===0){ el.innerHTML = `<div class="panel-empty">No hay reservas pendientes de cargar reclamo.</div>`; return; }
+  el.innerHTML = pendientes.map(p => `
+    <div class="list-row" data-movil="${p.movil}" data-reserva="${p.numeroReserva}" data-sede="${(p.sede||"").toString().trim()}">
+      <span class="list-plate">Móvil ${p.movil}</span>
+      <span class="list-title">Reserva N° ${p.numeroReserva} — ${(p.sede||"").toString().trim()} <span style="color:var(--muted); font-weight:400;">(${p.origen})</span></span>
+      <span class="list-right">${fmtFecha(p.fecha)}</span>
+    </div>`).join("");
+  el.querySelectorAll(".list-row").forEach(row => row.addEventListener("click", () => openRecModal({
+    movil: row.dataset.movil, numeroReserva: row.dataset.reserva, sede: guessSedeCode(row.dataset.sede)
+  })));
+}
+
+function guessSedeCode(sedeTexto){
+  const t = (sedeTexto||"").toLowerCase();
+  if(t.includes("cord")||t.includes("cba")) return "CBA";
+  if(t.includes("buenos")||t.includes("bsas")) return "BSAS";
+  if(t.includes("bari")||t.includes("brc")) return "BRC";
+  if(t.includes("salta")) return "SALTA";
+  return "CBA";
+}
+
+function renderRecPorSede(){
+  const scoped = (RAW_DATA.reclamos||[]).filter(r => STATE.recMes==="todas" || r.mes===STATE.recMes);
+  const sedes = [...new Set(scoped.map(r=>r.sede).filter(Boolean))];
+  const rows = sedes.map(s => {
+    const items = scoped.filter(r=>r.sede===s);
+    const con = items.filter(r=>r.reclamo==="SI").length;
+    return { sede:s, total:items.length, con, pct: items.length?Math.round(con/items.length*100):0 };
+  }).sort((a,b)=>b.total-a.total);
+  const el = document.getElementById("recSedeList");
+  if(rows.length===0){ el.innerHTML = `<div class="panel-empty">Sin datos en esta vista.</div>`; return; }
+  el.innerHTML = rows.map(r => `
+    <div class="list-row">
+      <span class="list-plate">${SEDE_LABEL[r.sede]||r.sede}</span>
+      <span class="list-bar-wrap" style="display:block;"><span class="list-bar" style="width:${r.pct}%; background:var(--red)"></span></span>
+      <span class="list-right">${r.con}/${r.total} (${r.pct}%)</span>
+    </div>`).join("");
+}
+
+function renderRecPorCategoria(){
+  const scoped = getReclamosScoped().filter(r=>r.reclamo==="SI" && r.categoria);
+  const counts = {};
+  scoped.forEach(r => { const c = r.categoria.trim()||"Otros"; counts[c] = (counts[c]||0)+1; });
+  const rows = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const max = rows.length ? rows[0][1] : 1;
+  const el = document.getElementById("recCategoriaList");
+  if(rows.length===0){ el.innerHTML = `<div class="panel-empty">Sin reclamos categorizados en esta vista.</div>`; return; }
+  el.innerHTML = rows.map(([cat,n]) => `
+    <div class="list-row">
+      <span class="list-title">${cat}</span>
+      <span class="list-bar-wrap" style="display:block;"><span class="list-bar" style="width:${n/max*100}%; background:var(--amber)"></span></span>
+      <span class="list-right">${n}</span>
+    </div>`).join("");
+}
+
+function renderRecNCHistorico(){
+  const nc = RAW_DATA.noConformidades||[];
+  const counts = {};
+  nc.forEach(n => { const c = (n.categoria||"Otros").split("/")[0].trim(); counts[c] = (counts[c]||0)+1; });
+  const rows = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const max = rows.length ? rows[0][1] : 1;
+  const el = document.getElementById("recNCList");
+  if(rows.length===0){ el.innerHTML = `<div class="panel-empty">Conectá la hoja de No Conformidades para ver el histórico.</div>`; return; }
+  el.innerHTML = rows.map(([cat,n]) => `
+    <div class="list-row">
+      <span class="list-title">${cat}</span>
+      <span class="list-bar-wrap" style="display:block;"><span class="list-bar" style="width:${n/max*100}%; background:var(--muted)"></span></span>
+      <span class="list-right">${n}</span>
+    </div>`).join("");
+}
+
+function renderCalBanner(){
+  const el = document.getElementById("recCalEstadoBanner");
+  const reservas = RAW_DATA.calendarioReservas||[];
+  if(reservas.length === 0){
+    el.innerHTML = `<div class="cal-banner neutral">${iconInfo} Todavía no cargaste reservas a mano — el calendario muestra check-in / check-out de Inspecciones como base.</div>`;
+  } else {
+    el.innerHTML = `<div class="cal-banner ok">${iconCheck} Mostrando ${reservas.length} reserva${reservas.length!==1?"s":""} cargada${reservas.length!==1?"s":""} a mano.</div>`;
+  }
+}
+
+function renderRecCalendar(){
+  renderCalBanner();
+  const y = STATE.recCalYear, m = STATE.recCalMonth; // m: 0-11
+  document.getElementById("recCalMesLabel").textContent = `Calendario — ${MESES_ORDEN[m]} ${y}`;
+  const usaReservasReales = (RAW_DATA.calendarioReservas||[]).length > 0;
+
+  const porDia = {};
+  function marcar(d, tipo, item){
+    if(!porDia[d]) porDia[d] = { checkin:0, checkout:0, items:[] };
+    porDia[d][tipo]++;
+    porDia[d].items.push(item);
+  }
+
+  if(usaReservasReales){
+    RAW_DATA.calendarioReservas.forEach(r => {
+      if(r.fechaInicio){ const f=new Date(r.fechaInicio); if(f.getFullYear()===y && f.getMonth()===m) marcar(f.getDate(), "checkin", { tipoOperacion:"Ingresa", movil:r.movil, numeroReserva:r.numeroReserva, sede:r.sede, cliente:r.cliente }); }
+      if(r.fechaFin){ const f=new Date(r.fechaFin); if(f.getFullYear()===y && f.getMonth()===m) marcar(f.getDate(), "checkout", { tipoOperacion:"Sale", movil:r.movil, numeroReserva:r.numeroReserva, sede:r.sede, cliente:r.cliente }); }
+    });
+  } else {
+    (RAW_DATA.inspecciones||[]).forEach(i => {
+      if(!i.fecha) return;
+      const f = new Date(i.fecha);
+      if(f.getFullYear()!==y || f.getMonth()!==m) return;
+      const tipo = (i.tipoOperacion||"").toLowerCase();
+      if(tipo.includes("check-in")) marcar(f.getDate(), "checkin", i);
+      else if(tipo.includes("check-out")) marcar(f.getDate(), "checkout", i);
+    });
+  }
+
+  const primerDiaSemana = new Date(y,m,1).getDay();
+  const diasEnMes = new Date(y,m+1,0).getDate();
+  const dows = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+
+  let html = dows.map(d=>`<div class="cal-dow">${d}</div>`).join("");
+  for(let i=0;i<primerDiaSemana;i++) html += `<div class="cal-day empty"></div>`;
+  for(let d=1; d<=diasEnMes; d++){
+    const info = porDia[d];
+    const dots = info ? `<div class="cal-dots">${info.checkin?`<span class="cal-dot" style="background:var(--green)"></span>`:""}${info.checkout?`<span class="cal-dot" style="background:var(--accent)"></span>`:""}</div>` : "";
+    html += `<div class="cal-day" data-day="${d}">${d}${dots}</div>`;
+  }
+  document.getElementById("recCalGrid").innerHTML = html;
+
+  document.querySelectorAll(".cal-day[data-day]").forEach(cell => {
+    cell.addEventListener("click", () => {
+      const d = Number(cell.dataset.day);
+      document.querySelectorAll(".cal-day").forEach(c=>c.classList.remove("selected"));
+      cell.classList.add("selected");
+      const info = porDia[d];
+      const det = document.getElementById("recCalDayDetail");
+      if(!info){ det.innerHTML = `<div class="panel-empty">Sin movimientos ese día.</div>`; return; }
+      det.innerHTML = info.items.map(i => `
+        <div class="history-row"><span>${(i.tipoOperacion||"—")}</span><span>Móvil ${i.movil}</span><span>Reserva ${i.numeroReserva||"—"}${i.cliente?(" · "+i.cliente):""}</span></div>
+      `).join("");
+    });
+  });
+}
+
+function renderReclamosTab(){
+  renderRecSidebarFilters();
+  renderRecKPIs();
+  renderRecPendientes();
+  renderRecPorSede();
+  renderRecPorCategoria();
+  renderRecCalendar();
+  renderRecNCHistorico();
+  document.getElementById("modeBadgeRec").textContent = document.getElementById("modeBadge").textContent;
+  document.getElementById("syncInfoRec").textContent = document.getElementById("syncInfo").textContent;
+}
+
+/* ---- Modal: cargar reserva (calendario) ---- */
+function openReservaModal(){
+  document.getElementById("reservaMovil").value = "";
+  document.getElementById("reservaNumero").value = "";
+  document.getElementById("reservaSede").value = "CBA";
+  document.getElementById("reservaCliente").value = "";
+  document.getElementById("reservaFechaInicio").value = todayISO();
+  document.getElementById("reservaFechaFin").value = "";
+  document.getElementById("reservaModalBackdrop").classList.add("open");
+}
+function closeReservaModal(){ document.getElementById("reservaModalBackdrop").classList.remove("open"); }
+
+function registrarReservaCalendario(payload){
+  RAW_DATA.calendarioReservas = RAW_DATA.calendarioReservas || [];
+  const existing = RAW_DATA.calendarioReservas.find(r => String(r.movil)===String(payload.movil) && r.numeroReserva===payload.numeroReserva);
+  const conFechas = { ...payload, fechaInicio:new Date(payload.fechaInicio), fechaFin:new Date(payload.fechaFin) };
+  if(existing) Object.assign(existing, conFechas);
+  else RAW_DATA.calendarioReservas.push(conFechas);
+  closeReservaModal();
+  renderReclamosTab();
+  enviarRegistro("reserva_calendario", payload);
+  showToast("Reserva cargada en el calendario.");
+}
+
+/* ---- Modal: cargar reclamo ---- */
+function openRecModal(prefill){
+  document.getElementById("recMovil").value = prefill?.movil || "";
+  document.getElementById("recNumeroReserva").value = prefill?.numeroReserva || "";
+  document.getElementById("recSede").value = prefill?.sede || "CBA";
+  document.getElementById("recReclamo").value = "NO";
+  document.getElementById("recCategoria").value = "";
+  document.getElementById("recDetalle").value = "";
+  document.getElementById("recModalBackdrop").classList.add("open");
+}
+function closeRecModal(){ document.getElementById("recModalBackdrop").classList.remove("open"); }
+
+function registrarReclamo(payload){
+  RAW_DATA.reclamos = RAW_DATA.reclamos || [];
+  const existing = RAW_DATA.reclamos.find(r => String(r.movil)===String(payload.movil) && r.numeroReserva===payload.numeroReserva);
+  if(existing) Object.assign(existing, payload);
+  else RAW_DATA.reclamos.push(payload);
+  closeRecModal();
+  renderReclamosTab();
+  enviarRegistro("reclamo", payload);
 }
 
 function renderAll(){
@@ -1832,6 +2365,50 @@ document.querySelectorAll("[data-close-fulllist]").forEach(b => b.addEventListen
 });
 document.addEventListener("keydown", e => {
   if(e.key === "Escape") document.querySelectorAll(".modal-backdrop.open").forEach(bd => bd.classList.remove("open"));
+});
+
+document.querySelectorAll(".top-tab").forEach(b => b.addEventListener("click", () => switchTab(b.dataset.tab)));
+
+document.getElementById("openReservaBtn").addEventListener("click", () => openReservaModal());
+document.querySelectorAll("[data-close-reserva]").forEach(b => b.addEventListener("click", closeReservaModal));
+document.getElementById("reservaModalBackdrop").addEventListener("click", e => { if(e.target === e.currentTarget) closeReservaModal(); });
+document.getElementById("reservaSubmit").addEventListener("click", () => {
+  const movil = document.getElementById("reservaMovil").value.trim();
+  const numeroReserva = document.getElementById("reservaNumero").value.trim();
+  const sede = document.getElementById("reservaSede").value;
+  const cliente = document.getElementById("reservaCliente").value.trim();
+  const fechaInicio = document.getElementById("reservaFechaInicio").value;
+  const fechaFin = document.getElementById("reservaFechaFin").value;
+  if(!movil || !numeroReserva || !fechaInicio || !fechaFin){ showToast("Completá móvil, n° de reserva y las dos fechas.", true); return; }
+  registrarReservaCalendario({ movil:Number(movil), numeroReserva, sede, cliente, fechaInicio, fechaFin });
+});
+
+document.getElementById("openRecBtn").addEventListener("click", () => openRecModal());
+document.getElementById("refreshBtnRec").addEventListener("click", e => {
+  e.currentTarget.classList.add("spin");
+  loadAndRender().then(()=>{ if(STATE.tab==="reclamos") renderReclamosTab(); }).finally(() => setTimeout(()=>e.currentTarget.classList.remove("spin"), 400));
+});
+document.querySelectorAll("[data-close-rec]").forEach(b => b.addEventListener("click", closeRecModal));
+document.getElementById("recModalBackdrop").addEventListener("click", e => { if(e.target === e.currentTarget) closeRecModal(); });
+
+document.getElementById("recSubmit").addEventListener("click", () => {
+  const movil = document.getElementById("recMovil").value.trim();
+  const numeroReserva = document.getElementById("recNumeroReserva").value.trim();
+  const sede = document.getElementById("recSede").value;
+  const reclamo = document.getElementById("recReclamo").value;
+  const categoria = document.getElementById("recCategoria").value.trim();
+  const detalle = document.getElementById("recDetalle").value.trim();
+  if(!movil || !numeroReserva){ showToast("Completá móvil y N° de reserva.", true); return; }
+  registrarReclamo({ mes:MESES_ORDEN[new Date().getMonth()], movil:Number(movil), numeroReserva, sede, reclamo, categoria, detalle });
+});
+
+document.getElementById("recCalPrev").addEventListener("click", () => {
+  STATE.recCalMonth--; if(STATE.recCalMonth<0){ STATE.recCalMonth=11; STATE.recCalYear--; }
+  renderRecCalendar();
+});
+document.getElementById("recCalNext").addEventListener("click", () => {
+  STATE.recCalMonth++; if(STATE.recCalMonth>11){ STATE.recCalMonth=0; STATE.recCalYear++; }
+  renderRecCalendar();
 });
 
 loadAndRender();
