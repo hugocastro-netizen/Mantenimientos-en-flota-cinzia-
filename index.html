@@ -824,7 +824,7 @@ const CONFIG = {
    ========================================================================= */
 function gvizUrl(sheetId, sheetName){
   const sheetParam = sheetName ? `&sheet=${encodeURIComponent(sheetName)}` : `&gid=0`;
-  return `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json${sheetParam}`;
+  return `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json${sheetParam}&_=${Date.now()}`;
 }
 function parseGvizDate(v){
   if(v == null) return null;
@@ -846,7 +846,7 @@ function parseGvizDate(v){
   return isNaN(d.getTime()) ? null : d;
 }
 async function fetchSheetRows(sheetId, sheetName){
-  const res = await fetch(gvizUrl(sheetId, sheetName));
+  const res = await fetch(gvizUrl(sheetId, sheetName), { cache: "no-store" });
   const text = await res.text();
   const json = JSON.parse(text.substring(text.indexOf("{"), text.lastIndexOf("}") + 1));
   let cols = json.table.cols.map(c => (c.label || c.id).trim());
