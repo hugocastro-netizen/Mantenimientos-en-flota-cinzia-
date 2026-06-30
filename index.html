@@ -871,6 +871,26 @@ async function fetchSheetRows(sheetId, sheetName){
   });
 }
 
+// Lectura dedicada para Fotos_URLs: NO usa detección de encabezados de Google
+// (ahí fue donde estaba el bug real) — toma las columnas siempre por posición,
+// sabiendo de antemano cómo las creó nuestro propio script de Apps Script.
+async function fetchFotosUrlsSheet(sheetId, sheetName){
+  const res = await fetch(gvizUrl(sheetId, sheetName), { cache: "no-store" });
+  const text = await res.text();
+  const json = JSON.parse(text.substring(text.indexOf("{"), text.lastIndexOf("}") + 1));
+  let rows = json.table.rows || [];
+  // Si la fila de encabezados ("ID_inspeccion", ...) vino incluida como dato, la saltamos.
+  if(rows.length && rows[0].c[0] && rows[0].c[0].v === "ID_inspeccion") rows = rows.slice(1);
+
+  return rows.filter(r => r.c[0] && r.c[0].v != null).map(r => ({
+    idInspeccion: r.c[0]?.v ?? null,
+    fotoFrente:   r.c[1]?.v ?? null,
+    fotoTrasera:  r.c[2]?.v ?? null,
+    fotoLateralIzq: r.c[3]?.v ?? null,
+    fotoLateralDer: r.c[4]?.v ?? null
+  }));
+}
+
 // La hoja de Inspecciones de AppSheet identifica vehículos por "numero_de_movil",
 // no por patente. Esta tabla los traduce. Si aparece un móvil nuevo que no esté
 // acá, avisame el número y la patente para agregarlo.
@@ -915,21 +935,17 @@ async function loadRealData(){
   // Las fotos viven en una pestaña separada (no en la que usa AppSheet) — se unen por ID_inspeccion.
   try{
     if(CONFIG.SHEETS.fotosUrls.id){
-      const fu = await fetchSheetRows(CONFIG.SHEETS.fotosUrls.id, CONFIG.SHEETS.fotosUrls.sheetName);
+      const fu = await fetchFotosUrlsSheet(CONFIG.SHEETS.fotosUrls.id, CONFIG.SHEETS.fotosUrls.sheetName);
       console.log("DIAGNÓSTICO Fotos_URLs — filas leídas:", fu.length);
       console.log("DIAGNÓSTICO Fotos_URLs — primera fila:", fu.length ? JSON.stringify(fu[0]) : "(sin filas — ¿corriste actualizarFotosURL?)");
-      const Cf = C.fotosUrls;
       const porId = {};
-      fu.forEach(r => { porId[r[Cf.idInspeccion]] = r; });
+      fu.forEach(r => { porId[r.idInspeccion] = r; });
       let matcheadas = 0;
       inspecciones.forEach(insp => {
         const r = porId[insp.idInspeccion];
         if(r){
           matcheadas++;
-          insp.fotos = {
-            frente: r[Cf.fotoFrente] || null, trasera: r[Cf.fotoTrasera] || null,
-            lateralIzq: r[Cf.fotoLateralIzq] || null, lateralDer: r[Cf.fotoLateralDer] || null
-          };
+          insp.fotos = { frente:r.fotoFrente||null, trasera:r.fotoTrasera||null, lateralIzq:r.fotoLateralIzq||null, lateralDer:r.fotoLateralDer||null };
         }
       });
       console.log("DIAGNÓSTICO Fotos_URLs — inspecciones con foto encontrada:", matcheadas, "de", inspecciones.length);
