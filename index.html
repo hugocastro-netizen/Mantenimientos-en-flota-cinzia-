@@ -871,24 +871,42 @@ async function fetchSheetRows(sheetId, sheetName){
   });
 }
 
-// Lectura dedicada para Fotos_URLs: NO usa detección de encabezados de Google
-// (ahí fue donde estaba el bug real) — toma las columnas siempre por posición,
-// sabiendo de antemano cómo las creó nuestro propio script de Apps Script.
-async function fetchFotosUrlsSheet(sheetId, sheetName){
-  const res = await fetch(gvizUrl(sheetId, sheetName), { cache: "no-store" });
-  const text = await res.text();
-  const json = JSON.parse(text.substring(text.indexOf("{"), text.lastIndexOf("}") + 1));
-  let rows = json.table.rows || [];
-  // Si la fila de encabezados ("ID_inspeccion", ...) vino incluida como dato, la saltamos.
-  if(rows.length && rows[0].c[0] && rows[0].c[0].v === "ID_inspeccion") rows = rows.slice(1);
+// Lectura de Fotos_URLs via CSV export — completamente distinto a gviz,
+// sin el problema de cache que tiene la API de Google Visualization.
+function parseCSVLine(line) {
+  const cells = [];
+  let inQuote = false, current = '';
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') {
+      if (inQuote && line[i+1] === '"') { current += '"'; i++; }
+      else inQuote = !inQuote;
+    } else if (c === ',' && !inQuote) {
+      cells.push(current); current = '';
+    } else { current += c; }
+  }
+  cells.push(current);
+  return cells;
+}
 
-  return rows.filter(r => r.c[0] && r.c[0].v != null).map(r => ({
-    idInspeccion: r.c[0]?.v ?? null,
-    fotoFrente:   r.c[1]?.v ?? null,
-    fotoTrasera:  r.c[2]?.v ?? null,
-    fotoLateralIzq: r.c[3]?.v ?? null,
-    fotoLateralDer: r.c[4]?.v ?? null
-  }));
+async function fetchFotosUrlsSheet(sheetId, sheetName){
+  const url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&sheet=${encodeURIComponent(sheetName)}&_=${Date.now()}`;
+  const res = await fetch(url, { cache: "no-store" });
+  if(!res.ok) throw new Error(`CSV export error: ${res.status}`);
+  const text = await res.text();
+  const lines = text.trim().split('\n').filter(l => l.trim());
+  if(lines.length < 2) return []; // solo el header o vacío
+  // línea 0 = encabezados, las demás = datos
+  return lines.slice(1).map(l => {
+    const c = parseCSVLine(l);
+    return {
+      idInspeccion:   (c[0]||'').trim(),
+      fotoFrente:     (c[1]||'').trim() || null,
+      fotoTrasera:    (c[2]||'').trim() || null,
+      fotoLateralIzq: (c[3]||'').trim() || null,
+      fotoLateralDer: (c[4]||'').trim() || null
+    };
+  }).filter(r => r.idInspeccion);
 }
 
 // La hoja de Inspecciones de AppSheet identifica vehículos por "numero_de_movil",
