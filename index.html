@@ -890,13 +890,15 @@ function parseCSVLine(line) {
 }
 
 async function fetchFotosUrlsSheet(sheetId, sheetName){
-  const url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&sheet=${encodeURIComponent(sheetName)}&_=${Date.now()}`;
+  // Usamos el gid numérico de la hoja FotosLinks para que el export CSV
+  // apunte exactamente a ella, sin depender del nombre (que Google ignoraba).
+  const gid = 483985835;
+  const url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}&_=${Date.now()}`;
   const res = await fetch(url, { cache: "no-store" });
   if(!res.ok) throw new Error(`CSV export error: ${res.status}`);
   const text = await res.text();
   const lines = text.trim().split('\n').filter(l => l.trim());
-  if(lines.length < 2) return []; // solo el header o vacío
-  // línea 0 = encabezados, las demás = datos
+  if(lines.length < 2) return [];
   return lines.slice(1).map(l => {
     const c = parseCSVLine(l);
     return {
@@ -906,7 +908,7 @@ async function fetchFotosUrlsSheet(sheetId, sheetName){
       fotoLateralIzq: (c[3]||'').trim() || null,
       fotoLateralDer: (c[4]||'').trim() || null
     };
-  }).filter(r => r.idInspeccion);
+  }).filter(r => r.idInspeccion && r.idInspeccion !== 'ID_inspeccion');
 }
 
 // La hoja de Inspecciones de AppSheet identifica vehículos por "numero_de_movil",
