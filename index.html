@@ -1135,16 +1135,22 @@ async function loadRealData(){
       reclamos = linesRec.slice(1).map(l => {
         const c = parseCSVLine(l);
         // Detectar formato viejo (col4 = SI/NO) vs nuevo (col4 = RECLAMO/CONSULTA/SIN_NOVEDAD)
+        // Columnas CSV: Mes(0), Movil(1), NumeroReserva(2), Sede(3), Tipo/Reclamo(4), Gravedad/Categoria(5), Categoria/Detalle(6), Detalle(7)
         const col4 = (c[4]||'').trim().toUpperCase();
-        let tipo, gravedad;
-        if(col4 === 'SI'){ tipo = 'RECLAMO'; gravedad = 'LEVE'; }
-        else if(col4 === 'NO'){ tipo = 'SIN_NOVEDAD'; gravedad = ''; }
-        else { tipo = col4 || 'SIN_NOVEDAD'; gravedad = (c[5]||'').trim().toUpperCase(); }
+        let tipo, categoria, detalle;
+        if(col4 === 'SI'){
+          // Formato viejo: SI/NO en col4, Categoria en col5, Detalle en col6
+          tipo = 'RECLAMO'; categoria = (c[5]||'').trim(); detalle = (c[6]||'').trim();
+        } else if(col4 === 'NO'){
+          tipo = 'SIN_NOVEDAD'; categoria = (c[5]||'').trim(); detalle = (c[6]||'').trim();
+        } else {
+          // Formato nuevo: RECLAMO/OBSERVACION/SIN_NOVEDAD en col4, Categoria en col5, Detalle en col6
+          tipo = col4 || 'SIN_NOVEDAD'; categoria = (c[5]||'').trim(); detalle = (c[6]||'').trim();
+        }
+        const reclamo = tipo === 'RECLAMO' ? 'SI' : 'NO';
         return {
           mes:(c[0]||'').trim(), movil:Number(c[1])||null, numeroReserva:(c[2]||'').trim(),
-          sede:(c[3]||'').trim().toUpperCase(), tipo, gravedad,
-          categoria: tipo==='RECLAMO'||(c[4]||'').toUpperCase()==='SI' ? (c[tipo==='RECLAMO'?6:5]||'').trim() : '',
-          detalle: (c[tipo==='RECLAMO'?7:6]||'').trim()
+          sede:(c[3]||'').trim().toUpperCase(), tipo, reclamo, categoria, detalle
         };
       }).filter(r => r.mes || r.numeroReserva);
       console.log("Reclamos cargados:", reclamos.length);
@@ -2307,7 +2313,9 @@ function openRecModal(prefill){
   document.getElementById("recMovil").value = prefill?.movil || "";
   document.getElementById("recNumeroReserva").value = prefill?.numeroReserva || "";
   document.getElementById("recSede").value = prefill?.sede || "CBA";
-  document.getElementById("recTipo").value = prefill?.tipo || "SIN_NOVEDAD";
+  // Deducir tipo: si el registro histórico no tiene tipo pero sí reclamo=SI, mapearlo
+  const tipoDeducido = prefill?.tipo || (prefill?.reclamo==="SI" ? "RECLAMO" : (prefill?.reclamo==="NO" ? "SIN_NOVEDAD" : "SIN_NOVEDAD"));
+  document.getElementById("recTipo").value = tipoDeducido;
   document.getElementById("recCategoria").value = prefill?.categoria || "";
   document.getElementById("recDetalle").value = prefill?.detalle || "";
   document.getElementById("recModalTitulo").textContent = prefill?.editar ? "Editar registro de reserva" : "Cargar reporte de reserva";
