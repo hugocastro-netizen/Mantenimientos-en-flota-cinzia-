@@ -614,6 +614,11 @@
         <div id="recPendientesList"></div>
       </div>
 
+      <div class="panel" style="margin-bottom:20px;">
+        <div class="panel-title">Registros cargados <span style="color:var(--muted);font-size:11px;font-weight:400;">— tocá cualquiera para editar</span></div>
+        <div id="recRegistrosList"></div>
+      </div>
+
       <div class="panel-row">
         <div class="panel">
           <div class="panel-title">Reclamos por sede</div>
@@ -789,17 +794,18 @@
 <div class="modal-backdrop" id="recModalBackdrop">
   <div class="modal form-modal">
     <button class="modal-close" data-close-rec>✕</button>
-    <h3>Cargar reporte de reserva</h3>
+    <h3 id="recModalTitulo">Cargar reporte de reserva</h3>
     <p class="form-hint">Una fila por reserva. Se actualiza si ya existe el mismo móvil + N° de reserva.</p>
     <div class="field"><label>Móvil</label><input type="number" id="recMovil"></div>
     <div class="field"><label>N° de reserva</label><input type="text" id="recNumeroReserva"></div>
     <div class="field"><label>Sede</label>
       <select id="recSede"><option value="CBA">Córdoba</option><option value="BSAS">Buenos Aires</option><option value="BRC">Bariloche</option><option value="SALTA">Salta</option></select>
     </div>
-    <div class="field"><label>¿Tuvo reclamo?</label>
-      <select id="recReclamo">
-        <option value="NO">No</option>
-        <option value="SI">Sí</option>
+    <div class="field"><label>Tipo</label>
+      <select id="recTipo">
+        <option value="SIN_NOVEDAD">Sin novedad</option>
+        <option value="OBSERVACION">Observación (sin reclamo)</option>
+        <option value="RECLAMO">Reclamo</option>
       </select>
     </div>
     <div class="field"><label>Categoría</label>
@@ -1766,6 +1772,7 @@ function renderRecSidebarFilters(){
 
 // Helpers de tipo de reclamo (simplificado: SI/NO)
 function esReclamo(r){ return r.tipo==="RECLAMO" || r.reclamo==="SI"; }
+function esObservacion(r){ return r.tipo==="OBSERVACION"; }
 
 // Instancias activas de Chart.js
 const _charts = {};
@@ -1775,12 +1782,14 @@ function renderRecKPIs(){
   const scoped = getReclamosScoped();
   const total = scoped.length;
   const reclamos = scoped.filter(esReclamo).length;
-  const sinReclamo = total - reclamos;
+  const observaciones = scoped.filter(esObservacion).length;
+  const sinReclamo = total - reclamos - observaciones;
   const tasa = total ? Math.round(reclamos/total*100) : 0;
   const cards = [
     { label:"Total reservas", value:total, frac:1, color:"var(--accent)" },
-    { label:"Con reclamo", value:reclamos, frac:total?reclamos/total:0, color:"var(--red)" },
-    { label:"Sin reclamo", value:sinReclamo, frac:total?sinReclamo/total:0, color:"var(--green)" },
+    { label:"Reclamos", value:reclamos, frac:total?reclamos/total:0, color:"var(--red)" },
+    { label:"Observaciones", value:observaciones, frac:total?observaciones/total:0, color:"var(--amber)" },
+    { label:"Sin novedad", value:sinReclamo, frac:total?sinReclamo/total:0, color:"var(--green)" },
     { label:"Tasa de reclamo", value:`${tasa}%`, frac:tasa/100, color:tasa>=40?"var(--red)":tasa>=20?"var(--amber)":"var(--green)" }
   ];
   document.getElementById("recKpiRow").innerHTML = cards.map(c => `
@@ -1859,6 +1868,7 @@ function renderChartTendencia(){
     if(!porMes[r.mes]) return;
     porMes[r.mes].total++;
     if(esReclamo(r)) porMes[r.mes].reclamos++;
+    else if(esObservacion(r)) porMes[r.mes].observaciones = (porMes[r.mes].observaciones||0)+1;
   });
   const meses = MESES_ORDEN.filter(m => porMes[m].total > 0);
   if(!meses.length){ document.getElementById("loadTendencia").textContent = "Sin datos suficientes"; return; }
@@ -1871,7 +1881,8 @@ function renderChartTendencia(){
       labels: meses,
       datasets:[
         { label:"Reclamos", data:meses.map(m=>porMes[m].reclamos), borderColor:"#EF4444", backgroundColor:"rgba(239,68,68,0.1)", tension:0.3, fill:true, pointRadius:4 },
-        { label:"Sin reclamo", data:meses.map(m=>porMes[m].total-porMes[m].reclamos), borderColor:"#2FB67C", backgroundColor:"rgba(47,182,124,0.1)", tension:0.3, fill:true, pointRadius:4 },
+        { label:"Observaciones", data:meses.map(m=>porMes[m].observaciones||0), borderColor:"#F59E0B", backgroundColor:"rgba(245,158,11,0.1)", tension:0.3, fill:true, pointRadius:4 },
+        { label:"Sin novedad", data:meses.map(m=>porMes[m].total-porMes[m].reclamos-(porMes[m].observaciones||0)), borderColor:"#2FB67C", backgroundColor:"rgba(47,182,124,0.1)", tension:0.3, fill:true, pointRadius:4 },
         { label:"Total", data:meses.map(m=>porMes[m].total), borderColor:"#6366F1", backgroundColor:"transparent", tension:0.3, borderDash:[4,4], pointRadius:3 }
       ]
     },
@@ -1905,7 +1916,8 @@ function renderChartTorta(){
   }
 
   const recCount = scoped.filter(esReclamo).length;
-  const sinCount = scoped.length - recCount;
+  const obsCount = scoped.filter(esObservacion).length;
+  const sinCount = scoped.length - recCount - obsCount;
   const tasa = scoped.length ? Math.round(recCount/scoped.length*100) : 0;
 
   document.getElementById("loadTorta").style.display = "none";
@@ -1914,8 +1926,8 @@ function renderChartTorta(){
   _charts["torta"] = new Chart(ctx, {
     type:"doughnut",
     data:{
-      labels:["Sin reclamo","Con reclamo"],
-      datasets:[{ data:[sinCount,recCount], backgroundColor:["#2FB67C","#EF4444"], borderWidth:2, borderColor:"#161922" }]
+      labels:["Sin novedad","Observaciones","Reclamos"],
+      datasets:[{ data:[sinCount,scoped.filter(esObservacion).length,recCount], backgroundColor:["#2FB67C","#F59E0B","#EF4444"], borderWidth:2, borderColor:"#161922" }]
     },
     options:{
       responsive:true, maintainAspectRatio:false, cutout:"60%",
@@ -1978,10 +1990,42 @@ function mostrarDetalleMovil(movilNum){
       </div>`).join("")}`;
 }
 
+function renderRecRegistros(){
+  const el = document.getElementById("recRegistrosList");
+  if(!el) return;
+  const scoped = getReclamosScoped().slice().sort((a,b) => {
+    const o = { RECLAMO:0, OBSERVACION:1, SIN_NOVEDAD:2 };
+    return (o[a.tipo]||2) - (o[b.tipo]||2);
+  });
+  if(!scoped.length){ el.innerHTML = `<div class="panel-empty">No hay registros cargados en esta vista.</div>`; return; }
+  const TIPO_LABEL = { RECLAMO:"Reclamo", OBSERVACION:"Observación", SIN_NOVEDAD:"Sin novedad" };
+  const TIPO_COLOR = { RECLAMO:"var(--red)", OBSERVACION:"var(--amber)", SIN_NOVEDAD:"var(--green)" };
+  el.innerHTML = scoped.map(r => {
+    const tipo = r.tipo || (r.reclamo==="SI" ? "RECLAMO" : "SIN_NOVEDAD");
+    const color = TIPO_COLOR[tipo] || "var(--muted)";
+    const label = TIPO_LABEL[tipo] || tipo;
+    return `<div class="list-row" style="cursor:pointer;" data-edit-reserva="${r.movil}|${r.numeroReserva}">
+      <span class="list-plate">M${r.movil}</span>
+      <span style="font-size:11px;font-weight:700;color:${color};min-width:80px;">${label}</span>
+      <span class="list-title">${r.numeroReserva||"—"} ${r.mes?`· ${r.mes}`:""}</span>
+      <span class="list-right" style="color:var(--muted);font-size:11px;">${r.categoria||""}</span>
+      <span style="font-size:11px;color:var(--accent);margin-left:8px;">✎ editar</span>
+    </div>`;
+  }).join("");
+  el.querySelectorAll("[data-edit-reserva]").forEach(row => {
+    row.addEventListener("click", () => {
+      const [movil, numeroReserva] = row.dataset.editReserva.split("|");
+      const rec = (RAW_DATA.reclamos||[]).find(r => String(r.movil)===movil && r.numeroReserva===numeroReserva);
+      if(rec) openRecModal({ ...rec, editar:true });
+    });
+  });
+}
+
 function renderReclamosTab(){
   renderRecSidebarFilters();
   renderRecKPIs();
   renderRecPendientes();
+  renderRecRegistros();
   renderRecPorSede();
   renderRecPorCategoria();
   renderCalBanner();
@@ -2198,8 +2242,9 @@ function generarInformePDF(mes, sede){
 
   <div class="kpis">
     <div class="kpi"><div class="val">${datos.length}</div><div class="lbl">Total reservas</div></div>
-    <div class="kpi red"><div class="val">${conRec.length}</div><div class="lbl">Con reclamo</div></div>
-    <div class="kpi green"><div class="val">${sinRec.length}</div><div class="lbl">Sin reclamo</div></div>
+    <div class="kpi red"><div class="val">${conRec.length}</div><div class="lbl">Reclamos</div></div>
+    <div class="kpi amber"><div class="val">${datos.filter(esObservacion).length}</div><div class="lbl">Observaciones</div></div>
+    <div class="kpi green"><div class="val">${sinRec.length-datos.filter(esObservacion).length}</div><div class="lbl">Sin novedad</div></div>
     <div class="kpi amber"><div class="val">${tasa}%</div><div class="lbl">Tasa reclamo</div></div>
   </div>
 
@@ -2220,6 +2265,18 @@ function generarInformePDF(mes, sede){
     <thead><tr><th>Móvil</th><th>N° Reserva</th><th>Categoría</th><th>Detalle del problema</th></tr></thead>
     <tbody>${detalleRows}</tbody>
   </table>
+
+  ${datos.filter(esObservacion).length > 0 ? `
+  <h2>Observaciones registradas</h2>
+  <table>
+    <thead><tr><th>Móvil</th><th>N° Reserva</th><th>Categoría</th><th>Detalle</th></tr></thead>
+    <tbody>${datos.filter(esObservacion).map(r=>`<tr>
+      <td>Móvil ${r.movil}</td>
+      <td style="text-align:center">${r.numeroReserva||"—"}</td>
+      <td>${r.categoria||"—"}</td>
+      <td>${r.detalle||"—"}</td>
+    </tr>`).join("")}</tbody>
+  </table>` : ""}
 
   <div class="footer">Informe generado automáticamente por el dashboard de Control de Flota · ${sedeLabel} · ${mesLabel} · ${fecha}</div>
 </body>
@@ -2250,9 +2307,10 @@ function openRecModal(prefill){
   document.getElementById("recMovil").value = prefill?.movil || "";
   document.getElementById("recNumeroReserva").value = prefill?.numeroReserva || "";
   document.getElementById("recSede").value = prefill?.sede || "CBA";
-  document.getElementById("recReclamo").value = "NO";
-  document.getElementById("recCategoria").value = "";
-  document.getElementById("recDetalle").value = "";
+  document.getElementById("recTipo").value = prefill?.tipo || "SIN_NOVEDAD";
+  document.getElementById("recCategoria").value = prefill?.categoria || "";
+  document.getElementById("recDetalle").value = prefill?.detalle || "";
+  document.getElementById("recModalTitulo").textContent = prefill?.editar ? "Editar registro de reserva" : "Cargar reporte de reserva";
   document.getElementById("recModalBackdrop").classList.add("open");
 }
 function closeRecModal(){ document.getElementById("recModalBackdrop").classList.remove("open"); }
@@ -2851,11 +2909,12 @@ document.getElementById("recSubmit").addEventListener("click", () => {
   const movil = document.getElementById("recMovil").value.trim();
   const numeroReserva = document.getElementById("recNumeroReserva").value.trim();
   const sede = document.getElementById("recSede").value;
-  const reclamo = document.getElementById("recReclamo").value;
+  const tipo = document.getElementById("recTipo").value;
   const categoria = document.getElementById("recCategoria").value.trim();
   const detalle = document.getElementById("recDetalle").value.trim();
   if(!movil || !numeroReserva){ showToast("Completá móvil y N° de reserva.", true); return; }
-  registrarReclamo({ mes:MESES_ORDEN[new Date().getMonth()], movil:Number(movil), numeroReserva, sede, tipo:reclamo==="SI"?"RECLAMO":"SIN_NOVEDAD", reclamo, categoria, detalle });
+  const reclamo = tipo === "RECLAMO" ? "SI" : "NO";
+  registrarReclamo({ mes:MESES_ORDEN[new Date().getMonth()], movil:Number(movil), numeroReserva, sede, tipo, reclamo, categoria, detalle });
 });
 
 document.getElementById("recCalPrev").addEventListener("click", () => {
