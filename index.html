@@ -160,6 +160,8 @@
   .nc-badge.cerrada{background:rgba(47,182,124,.15); color:#2FB67C;}
   .nc-header{display:grid; grid-template-columns:80px 90px 1fr 1fr 110px; gap:8px; padding:6px 4px; font-size:10.5px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; border-bottom:1px solid var(--border-strong); margin-bottom:4px;}
 
+  .chart-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted);pointer-events:none;}
+
   .cal-banner{
     display:flex; align-items:center; gap:8px; padding:9px 12px; border-radius:8px; font-size:12px; font-weight:600;
     margin:10px 0 4px;
@@ -587,18 +589,18 @@
       <div class="panel-row" style="margin-bottom:20px;">
         <div class="panel" style="flex:1.3;">
           <div class="panel-title">Tendencia anual — reclamos mes a mes</div>
-          <div style="position:relative;height:220px;"><canvas id="chartTendencia"></canvas></div>
+          <div style="position:relative;height:220px;"><canvas id="chartTendencia" width="400" height="220"></canvas><div class="chart-loading" id="loadTendencia">Cargando…</div></div>
         </div>
         <div class="panel" style="flex:0.9;">
-          <div class="panel-title">Situación del mes actual</div>
-          <div style="position:relative;height:220px;"><canvas id="chartTorta"></canvas></div>
+          <div class="panel-title">Situación — <span id="tituloTorta">último mes con datos</span></div>
+          <div style="position:relative;height:220px;"><canvas id="chartTorta" width="300" height="220"></canvas><div class="chart-loading" id="loadTorta">Cargando…</div></div>
         </div>
       </div>
 
       <div class="panel-row" style="margin-bottom:20px;">
         <div class="panel">
           <div class="panel-title">Pareto de reclamos por móvil</div>
-          <div style="position:relative;height:220px;"><canvas id="chartParetoMovil"></canvas></div>
+          <div style="position:relative;height:220px;"><canvas id="chartParetoMovil" width="400" height="220"></canvas></div>
           <div id="paretoMovilDetalle" style="margin-top:12px;"></div>
         </div>
         <div class="panel">
@@ -874,7 +876,7 @@ const CONFIG = {
       fotoFrente:"foto_frente_URL", fotoTrasera:"foto_trasero_URL",
       fotoLateralIzq:"foto_lateral_izquierdo_URL", fotoLateralDer:"foto_lateral_derecho_URL"
     },
-    mantenimiento: { patente:"Patente", item:"Item", proximoKm:"Proximo_Km" },
+    mantenimiento: { patente:"Patente", item:"Item", proximoKm:"Proximo_Km", vtoItv:"VTO_ITV" },
     reparaciones: { patente:"Patente", fecha:"Fecha", km:"Km", descripcion:"Descripcion", gravedad:"Gravedad" },
     neumaticos: { patente:"Patente", posicion:"Posicion", mm:"Mm", zona:"Zona" },
     salud: { patente:"Patente", tipo:"Tipo", estado:"Estado" },
@@ -1059,7 +1061,9 @@ async function loadRealData(){
       const mant = await fetchSheetRows(CONFIG.SHEETS.mantenimiento.id, CONFIG.SHEETS.mantenimiento.sheetName);
       mantenimiento = mant.map(r => ({
         patente: r[C.mantenimiento.patente], item: r[C.mantenimiento.item],
-        proximoKm: r[C.mantenimiento.proximoKm]===""||r[C.mantenimiento.proximoKm]==null ? null : Number(r[C.mantenimiento.proximoKm])
+        patente: r[C.mantenimiento.patente], item: r[C.mantenimiento.item],
+        proximoKm: r[C.mantenimiento.proximoKm]===""||r[C.mantenimiento.proximoKm]==null ? null : Number(r[C.mantenimiento.proximoKm]),
+        vtoItv: r[C.mantenimiento.vtoItv] || null
       }));
     }
   }catch(e){ console.warn("Todavía no hay hoja de Mantenimiento conectada — sigo solo con inspecciones:", e); }
@@ -1251,7 +1255,7 @@ function buildMockData(){
     { movil:12, patente:"AF958VV", zona:"Buenos Aires", km:199200, vtoItv:"2026-05-22", alineacion:198325, elasticos:190000,
       meta:{ asistencias:1, filtroParticula:"SI", cambioDeUso:"Pedido", vigia:"si" },
       mant:[254000,200000,204200,200000,220000,240000,230000,null,210000,210000,203000,null] },
-    { movil:14, patente:"AF528TK", zona:"Buenos Aires", km:129600, vtoItv:"2026-03-13", alineacion:129600, elasticos:115000,
+    { movil:14, patente:"AF528TK", zona:"Buenos Aires", km:129600, vtoItv:"2028-06-30", alineacion:129600, elasticos:115000,
       meta:{ filtroParticula:"SI", cambioDeUso:"si" },
       mant:[150000,null,139500,114000,142000,142000,162000,180000,160000,160000,null,null] },
     { movil:15, patente:"AG442DN", zona:"Córdoba",      km:150700, vtoItv:"2027-02-14", alineacion:140810, elasticos:100000,
@@ -1269,13 +1273,13 @@ function buildMockData(){
     { movil:19, patente:"AH499BL", zona:"Buenos Aires", km:38700,  vtoItv:"2027-06-12", alineacion:38400, elasticos:30000,
       meta:{ asistencias:1, filtroParticula:"SI", cambioDeUso:"Pedido", vigia:"no" },
       mant:[150000,100000,43000,25000,50000,50000,900000,null,80000,80000,50000,null] },
-    { movil:20, patente:"AH719PO", zona:"Córdoba",      km:18700,  vtoItv:null, alineacion:13450, elasticos:30000,
+    { movil:20, patente:"AH719PO", zona:"Córdoba",      km:18700,  vtoItv:"2026-10-17", alineacion:13450, elasticos:30000,
       meta:{ asistencias:0, filtroParticula:"SI", cambioDeUso:"si", vigia:"no" },
       mant:[150000,100000,30000,25000,50000,50000,900000,null,80000,80000,null,null] },
-    { movil:21, patente:"AH719PP", zona:"Córdoba",      km:9400,   vtoItv:null, alineacion:3679, elasticos:30000,
+    { movil:21, patente:"AH719PP", zona:"Córdoba",      km:9400,   vtoItv:"2026-10-17", alineacion:3679, elasticos:30000,
       meta:{ asistencias:0, filtroParticula:"SI", cambioDeUso:"si", vigia:"no" },
       mant:[150000,100000,10000,25000,50000,50000,900000,null,80000,80000,null,null] },
-    { movil:22, patente:"AI019SV", zona:"Córdoba",      km:0,      vtoItv:null, alineacion:null, elasticos:30000,
+    { movil:22, patente:"AI019SV", zona:"Córdoba",      km:0,      vtoItv:"2028-02-05", alineacion:null, elasticos:30000,
       meta:{ asistencias:0, filtroParticula:"SI", cambioDeUso:"Pedido", vigia:"no" },
       mant:[150000,100000,10000,25000,50000,50000,900000,null,80000,80000,null,null] }
   ];
@@ -1351,13 +1355,18 @@ function buildVehicles(data){
   return Object.values(byPatente).map(lista => {
     const v = lista[0]; // la más reciente: de ahí salen km/zona/etc. actuales
     const ultimasInspecciones = lista.slice(0,2); // para la galería de 8 fotos (2 x 4)
-    const items = data.mantenimiento.filter(m => m.patente === v.patente).map(m => {
+    // VTO_ITV: en modo mock viene de v.vtoItv; en modo en vivo la leemos del mantenimiento
+    const mantVehiculo = data.mantenimiento.filter(m => m.patente === v.patente);
+    const items = mantVehiculo.map(m => {
       const kmProximo = m.proximoKm;
       const restante = kmProximo - v.km;
       const postergacion = (data.postergaciones||[]).find(p => p.patente === v.patente && p.item === m.item) || null;
       return { item:m.item, kmProximo, restante, status:statusFromRemaining(restante), postergacion };
     });
-    const itv = { fecha:v.vtoItv||null, status:itvStatus(v.vtoItv, today) };
+    // Tomar la primera VTO_ITV no vacía del mantenimiento de este vehículo
+    const vtoItvRaw = v.vtoItv || (mantVehiculo.find(m => m.vtoItv) || {}).vtoItv || null;
+    const vtoItvDate = vtoItvRaw ? parseGvizDate(vtoItvRaw) : null;
+    const itv = { fecha:vtoItvDate, status:itvStatus(vtoItvDate, today) };
     const dias = v.fecha ? Math.round((today - v.fecha) / 86400000) : null;
 
     const neumaticos = {
@@ -1852,7 +1861,8 @@ function renderChartTendencia(){
     if(esReclamo(r)) porMes[r.mes].reclamos++;
   });
   const meses = MESES_ORDEN.filter(m => porMes[m].total > 0);
-  if(!meses.length) return;
+  if(!meses.length){ document.getElementById("loadTendencia").textContent = "Sin datos suficientes"; return; }
+  document.getElementById("loadTendencia").style.display = "none";
   const ctx = document.getElementById("chartTendencia");
   if(!ctx) return;
   _charts["tendencia"] = new Chart(ctx, {
@@ -1898,6 +1908,9 @@ function renderChartTorta(){
   const sinCount = scoped.length - recCount;
   const tasa = scoped.length ? Math.round(recCount/scoped.length*100) : 0;
 
+  document.getElementById("loadTorta").style.display = "none";
+  const tituloEl = document.getElementById("tituloTorta");
+  if(tituloEl) tituloEl.textContent = mesLabel;
   _charts["torta"] = new Chart(ctx, {
     type:"doughnut",
     data:{
@@ -1980,7 +1993,11 @@ function renderReclamosTab(){
     renderChartTendencia();
     renderChartTorta();
     renderChartParetoMovil();
-  }, 50);
+    // Segundo intento: forzar resize de Chart.js por si el canvas seguía oculto
+    setTimeout(() => {
+      Object.values(_charts).forEach(c => { try{ c.resize(); }catch(e){} });
+    }, 200);
+  }, 150);
 }
 
 function renderNCTablero(){
