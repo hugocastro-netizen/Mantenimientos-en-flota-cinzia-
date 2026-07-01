@@ -1878,13 +1878,26 @@ function renderChartTendencia(){
 
 function renderChartTorta(){
   destroyChart("torta");
-  const mesActual = MESES_ORDEN[new Date().getMonth()];
-  const scoped = (RAW_DATA.reclamos||[]).filter(r => r.mes===mesActual && (STATE.recSede==="todas"||r.sede===STATE.recSede));
-  if(!scoped.length) return;
-  const recCount = scoped.filter(esReclamo).length;
-  const sinCount = scoped.length - recCount;
   const ctx = document.getElementById("chartTorta");
   if(!ctx) return;
+
+  // Usar el mes del filtro si está activo; si no, el mes actual; si no tiene datos, el último mes con datos
+  const todosMeses = RAW_DATA.reclamos||[];
+  let mesLabel = STATE.recMes !== "todas" ? STATE.recMes : MESES_ORDEN[new Date().getMonth()];
+  let scoped = todosMeses.filter(r => r.mes===mesLabel && (STATE.recSede==="todas"||r.sede===STATE.recSede));
+
+  // Si no hay datos para ese mes, buscar el último mes con datos
+  if(!scoped.length){
+    const mesesConDatos = MESES_ORDEN.filter(m => todosMeses.some(r => r.mes===m && (STATE.recSede==="todas"||r.sede===STATE.recSede)));
+    if(!mesesConDatos.length) return;
+    mesLabel = mesesConDatos[mesesConDatos.length - 1];
+    scoped = todosMeses.filter(r => r.mes===mesLabel && (STATE.recSede==="todas"||r.sede===STATE.recSede));
+  }
+
+  const recCount = scoped.filter(esReclamo).length;
+  const sinCount = scoped.length - recCount;
+  const tasa = scoped.length ? Math.round(recCount/scoped.length*100) : 0;
+
   _charts["torta"] = new Chart(ctx, {
     type:"doughnut",
     data:{
@@ -1892,10 +1905,10 @@ function renderChartTorta(){
       datasets:[{ data:[sinCount,recCount], backgroundColor:["#2FB67C","#EF4444"], borderWidth:2, borderColor:"#161922" }]
     },
     options:{
-      responsive:true, maintainAspectRatio:false, cutout:"65%",
+      responsive:true, maintainAspectRatio:false, cutout:"60%",
       plugins:{
         legend:{ position:"bottom", labels:{ color:"#8B93A1", font:{ size:10 }, padding:10 } },
-        title:{ display:true, text:`${mesActual} · ${scoped.length} reservas`, color:"#8B93A1", font:{ size:11 } }
+        title:{ display:true, text:`${mesLabel} — ${scoped.length} reservas totales · ${tasa}% con reclamo`, color:"#8B93A1", font:{ size:11 } }
       }
     }
   });
