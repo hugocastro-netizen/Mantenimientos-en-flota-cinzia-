@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   :root{
     --bg:#0F1115;
@@ -550,6 +551,10 @@
         <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
         Cargar reclamo
       </button>
+      <button class="btn btn-block" id="openInformeBtn">
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+        Generar informe PDF
+      </button>
     </div>
 
     <div class="sidebar-footer">
@@ -570,8 +575,31 @@
       <div class="kpis" id="recKpiRow"></div>
       <div class="kpi-subnote" id="recKpiSubnote"></div>
 
+      <!-- Fila de gráficos -->
+      <div class="panel-row" style="margin-bottom:20px;">
+        <div class="panel" style="flex:1.3;">
+          <div class="panel-title">Tendencia anual — reclamos mes a mes</div>
+          <div style="position:relative;height:220px;"><canvas id="chartTendencia"></canvas></div>
+        </div>
+        <div class="panel" style="flex:0.9;">
+          <div class="panel-title">Situación del mes actual</div>
+          <div style="position:relative;height:220px;"><canvas id="chartTorta"></canvas></div>
+        </div>
+      </div>
+
+      <div class="panel-row" style="margin-bottom:20px;">
+        <div class="panel">
+          <div class="panel-title">Pareto de reclamos por móvil</div>
+          <div style="position:relative;height:220px;"><canvas id="chartParetoMovil"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Pareto por categoría de problema</div>
+          <div id="recCategoriaList"></div>
+        </div>
+      </div>
+
       <div class="panel" style="margin-bottom:20px;">
-        <div class="panel-title">Pendientes de cargar (check-outs sin reclamo registrado)</div>
+        <div class="panel-title">Pendientes de cargar (check-outs sin reporte registrado)</div>
         <div id="recPendientesList"></div>
       </div>
 
@@ -581,27 +609,17 @@
           <div id="recSedeList"></div>
         </div>
         <div class="panel">
-          <div class="panel-title">Pareto por categoría</div>
-          <div id="recCategoriaList"></div>
+          <div class="panel-title">
+            <span id="recCalMesLabel">Calendario</span>
+            <span style="margin-left:auto; display:flex; gap:6px;">
+              <span class="cal-nav" id="recCalPrev">‹</span>
+              <span class="cal-nav" id="recCalNext">›</span>
+            </span>
+          </div>
+          <div id="recCalEstadoBanner"></div>
+          <div class="cal-grid" id="recCalGrid"></div>
+          <div id="recCalDayDetail" style="margin-top:10px;"></div>
         </div>
-      </div>
-
-      <div class="panel" style="margin-bottom:20px;">
-        <div class="panel-title">
-          <span id="recCalMesLabel">Calendario</span>
-          <span style="margin-left:auto; display:flex; gap:6px;">
-            <span class="cal-nav" id="recCalPrev">‹</span>
-            <span class="cal-nav" id="recCalNext">›</span>
-          </span>
-        </div>
-        <div id="recCalEstadoBanner"></div>
-        <div class="cal-grid" id="recCalGrid"></div>
-        <div id="recCalDayDetail" style="margin-top:10px;"></div>
-      </div>
-
-      <div class="panel" style="margin-bottom:20px;">
-        <div class="panel-title">No Conformidades históricas — por categoría (referencia)</div>
-        <div id="recNCList"></div>
       </div>
     </div>
   </div>
@@ -693,6 +711,42 @@
   </div>
 </div>
 
+<!-- Modal generar informe PDF -->
+<div class="modal-backdrop" id="informeModalBackdrop">
+  <div class="modal form-modal">
+    <button class="modal-close" data-close-informe>✕</button>
+    <h3>Generar informe PDF</h3>
+    <p class="form-hint">Genera un informe detallado por sucursal con todas las reservas del mes seleccionado.</p>
+    <div class="field"><label>Mes</label>
+      <select id="informeMes">
+        <option value="todas">Todos los meses</option>
+        <option value="Enero">Enero</option>
+        <option value="Febrero">Febrero</option>
+        <option value="Marzo">Marzo</option>
+        <option value="Abril">Abril</option>
+        <option value="Mayo">Mayo</option>
+        <option value="Junio">Junio</option>
+        <option value="Julio">Julio</option>
+        <option value="Agosto">Agosto</option>
+        <option value="Septiembre">Septiembre</option>
+        <option value="Octubre">Octubre</option>
+        <option value="Noviembre">Noviembre</option>
+        <option value="Diciembre">Diciembre</option>
+      </select>
+    </div>
+    <div class="field"><label>Sucursal</label>
+      <select id="informeSede">
+        <option value="todas">Todas las sucursales (un PDF por cada una)</option>
+        <option value="CBA">Córdoba</option>
+        <option value="BSAS">Buenos Aires</option>
+        <option value="BRC">Bariloche</option>
+        <option value="SALTA">Salta</option>
+      </select>
+    </div>
+    <button class="btn btn-primary btn-block" id="informeSubmit">Generar y descargar PDF</button>
+  </div>
+</div>
+
 <!-- Modal cargar reserva (calendario) -->
 <div class="modal-backdrop" id="reservaModalBackdrop">
   <div class="modal form-modal">
@@ -715,15 +769,26 @@
 <div class="modal-backdrop" id="recModalBackdrop">
   <div class="modal form-modal">
     <button class="modal-close" data-close-rec>✕</button>
-    <h3>Cargar reclamo de reserva</h3>
-    <p class="form-hint">Una fila por reserva. Si ya existe una con el mismo móvil + N° de reserva, se actualiza en vez de duplicarse.</p>
+    <h3>Cargar reporte de reserva</h3>
+    <p class="form-hint">Una fila por reserva. Se actualiza si ya existe el mismo móvil + N° de reserva.</p>
     <div class="field"><label>Móvil</label><input type="number" id="recMovil"></div>
     <div class="field"><label>N° de reserva</label><input type="text" id="recNumeroReserva"></div>
     <div class="field"><label>Sede</label>
       <select id="recSede"><option value="CBA">Córdoba</option><option value="BSAS">Buenos Aires</option><option value="BRC">Bariloche</option><option value="SALTA">Salta</option></select>
     </div>
-    <div class="field"><label>¿Tuvo reclamo?</label>
-      <select id="recReclamo"><option value="NO">No</option><option value="SI">Sí</option></select>
+    <div class="field"><label>Tipo</label>
+      <select id="recTipo">
+        <option value="SIN_NOVEDAD">Sin novedad</option>
+        <option value="CONSULTA">Consulta (sin reclamo)</option>
+        <option value="RECLAMO">Reclamo</option>
+      </select>
+    </div>
+    <div id="recGravedadField" class="field" style="display:none"><label>Gravedad del reclamo</label>
+      <select id="recGravedad">
+        <option value="LEVE">Leve</option>
+        <option value="GRAVE">Grave</option>
+        <option value="MUY_GRAVE">Muy grave</option>
+      </select>
     </div>
     <div class="field"><label>Categoría</label>
       <input type="text" id="recCategoria" placeholder="Ej: Agua/Sanitario, Eléctrico, Mecánica...">
@@ -780,7 +845,7 @@ const CONFIG = {
     postergaciones:{ id: "", sheetName: "Postergaciones" }, // opcional, idem
     salud:         { id: "", sheetName: "Salud" }, // opcional, idem
     catalogo:      { id: "", sheetName: "Catalogo_Mantenimiento" }, // opcional, idem
-    reclamos:      { id: "", sheetName: "" }, // hoja Reclamos.csv importada — pegá el ID cuando la tengas
+    reclamos:      { id: "12k2om9MjwpfB8LzsT1q2eacnfBxI1ygQ", sheetName: "Reclamos_Det", gid: 1166067787 },
     noConformidades: { id: "", sheetName: "" }, // hoja NoConformidades.csv importada — opcional, solo referencia histórica
     calendarioReservas: { id: "", sheetName: "" }, // la va a llenar el robot de sincronización (cuando lo armemos)
     calendarioEstado: { id: "", sheetName: "" } // 1 fila que el robot actualiza cada corrida: UltimaCorrida / Exito / Mensaje / ReservasEncontradas
@@ -804,7 +869,7 @@ const CONFIG = {
     neumaticos: { patente:"Patente", posicion:"Posicion", mm:"Mm", zona:"Zona" },
     salud: { patente:"Patente", tipo:"Tipo", estado:"Estado" },
     catalogo: { item:"Item", intervaloKm:"IntervaloKm", categoria:"Categoria" },
-    reclamos: { mes:"Mes", movil:"Movil", numeroReserva:"NumeroReserva", sede:"Sede", reclamo:"Reclamo", categoria:"Categoria", detalle:"Detalle" },
+    reclamos: { mes:"Mes", movil:"Movil", numeroReserva:"NumeroReserva", sede:"Sede", tipo:"Tipo", gravedad:"Gravedad", categoria:"Categoria", detalle:"Detalle" },
     noConformidades: { tipo:"Tipo", movil:"Movil", problema:"Problema", categoria:"Categoria" },
     calendarioReservas: { movil:"Movil", numeroReserva:"NumeroReserva", fechaInicio:"FechaInicio", fechaFin:"FechaFin", sede:"Sede", cliente:"Cliente", estado:"Estado" },
     calendarioEstado: { ultimaCorrida:"UltimaCorrida", exito:"Exito", mensaje:"Mensaje", reservasEncontradas:"ReservasEncontradas" },
@@ -1039,12 +1104,30 @@ async function loadRealData(){
   let reclamos = [];
   try{
     if(CONFIG.SHEETS.reclamos.id){
-      const rec = await fetchSheetRows(CONFIG.SHEETS.reclamos.id, CONFIG.SHEETS.reclamos.sheetName);
-      reclamos = rec.map(r => ({
-        mes:r[C.reclamos.mes], movil:Number(r[C.reclamos.movil])||null, numeroReserva:String(r[C.reclamos.numeroReserva]??"").trim(),
-        sede:(r[C.reclamos.sede]||"").toUpperCase(), reclamo:(r[C.reclamos.reclamo]||"NO").toUpperCase(),
-        categoria:r[C.reclamos.categoria]||"", detalle:r[C.reclamos.detalle]||""
-      }));
+      const gidRec = CONFIG.SHEETS.reclamos.gid;
+      const urlRec = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEETS.reclamos.id}/export?format=csv&gid=${gidRec}&_=${Date.now()}`;
+      const resRec = await fetch(urlRec, { cache:"no-store" });
+      const textRec = await resRec.text();
+      const linesRec = textRec.trim().split('\n').filter(l=>l.trim());
+      // Fila 0 = encabezados, desde fila 1 = datos
+      // Columnas: Mes,Movil,NumeroReserva,Sede,Tipo,Gravedad,Categoria,Detalle
+      // Retrocompat: datos viejos tienen Reclamo=SI/NO en col 4, mapeamos a tipo
+      reclamos = linesRec.slice(1).map(l => {
+        const c = parseCSVLine(l);
+        // Detectar formato viejo (col4 = SI/NO) vs nuevo (col4 = RECLAMO/CONSULTA/SIN_NOVEDAD)
+        const col4 = (c[4]||'').trim().toUpperCase();
+        let tipo, gravedad;
+        if(col4 === 'SI'){ tipo = 'RECLAMO'; gravedad = 'LEVE'; }
+        else if(col4 === 'NO'){ tipo = 'SIN_NOVEDAD'; gravedad = ''; }
+        else { tipo = col4 || 'SIN_NOVEDAD'; gravedad = (c[5]||'').trim().toUpperCase(); }
+        return {
+          mes:(c[0]||'').trim(), movil:Number(c[1])||null, numeroReserva:(c[2]||'').trim(),
+          sede:(c[3]||'').trim().toUpperCase(), tipo, gravedad,
+          categoria: tipo==='RECLAMO'||(c[4]||'').toUpperCase()==='SI' ? (c[tipo==='RECLAMO'?6:5]||'').trim() : '',
+          detalle: (c[tipo==='RECLAMO'?7:6]||'').trim()
+        };
+      }).filter(r => r.mes || r.numeroReserva);
+      console.log("Reclamos cargados:", reclamos.length);
     }
   }catch(e){ console.warn("Todavía no hay hoja de Reclamos legible:", e); }
 
@@ -1661,17 +1744,31 @@ function renderRecSidebarFilters(){
   document.querySelectorAll("[data-recmes]").forEach(b => b.addEventListener("click", () => { STATE.recMes = b.dataset.recmes; renderReclamosTab(); }));
 }
 
+// Helpers de tipo/gravedad
+const GRAVEDAD_COLOR = { LEVE:"#F59E0B", GRAVE:"#EF4444", MUY_GRAVE:"#7F1D1D" };
+const GRAVEDAD_LABEL_MAP = { LEVE:"Leve", GRAVE:"Grave", MUY_GRAVE:"Muy grave" };
+function esReclamo(r){ return r.tipo==="RECLAMO" || r.reclamo==="SI"; }
+function esConsulta(r){ return r.tipo==="CONSULTA"; }
+
+// Instancias activas de Chart.js
+const _charts = {};
+function destroyChart(id){ if(_charts[id]){ _charts[id].destroy(); delete _charts[id]; } }
+
 function renderRecKPIs(){
   const scoped = getReclamosScoped();
   const total = scoped.length;
-  const con = scoped.filter(r=>r.reclamo==="SI").length;
-  const sin = total - con;
-  const tasa = total ? Math.round(con/total*100) : 0;
+  const reclamos = scoped.filter(esReclamo).length;
+  const consultas = scoped.filter(esConsulta).length;
+  const sinNovedad = total - reclamos - consultas;
+  const tasa = total ? Math.round(reclamos/total*100) : 0;
+  const muygrave = scoped.filter(r=>esReclamo(r)&&r.gravedad==="MUY_GRAVE").length;
   const cards = [
     { label:"Total reservas", value:total, frac:1, color:"var(--accent)" },
-    { label:"Con reclamo", value:con, frac:total?con/total:0, color:"var(--red)" },
-    { label:"Sin reclamo", value:sin, frac:total?sin/total:0, color:"var(--green)" },
-    { label:"Tasa de reclamo", value:`${tasa}%`, frac:tasa/100, color:tasa>=40?"var(--red)":tasa>=20?"var(--amber)":"var(--green)" }
+    { label:"Reclamos", value:reclamos, frac:total?reclamos/total:0, color:"var(--red)" },
+    { label:"Consultas", value:consultas, frac:total?consultas/total:0, color:"var(--amber)" },
+    { label:"Sin novedad", value:sinNovedad, frac:total?sinNovedad/total:0, color:"var(--green)" },
+    { label:"Tasa de reclamo", value:`${tasa}%`, frac:tasa/100, color:tasa>=40?"var(--red)":tasa>=20?"var(--amber)":"var(--green)" },
+    { label:"Muy graves", value:muygrave, frac:reclamos?muygrave/reclamos:0, color:"#7F1D1D" }
   ];
   document.getElementById("recKpiRow").innerHTML = cards.map(c => `
     <div class="kpi-card">
@@ -1679,13 +1776,13 @@ function renderRecKPIs(){
       <div class="kpi-label">${c.label}</div>
       <div class="kpi-bar"><div class="kpi-bar-fill" style="width:${c.frac*100}%; background:${c.color}"></div></div>
     </div>`).join("");
-  document.getElementById("recKpiSubnote").textContent = `${RAW_DATA.noConformidades?.length||0} NC históricas de referencia`;
+  document.getElementById("recKpiSubnote").textContent = `Vista: ${STATE.recMes==="todas"?"todo el año":STATE.recMes} · ${STATE.recSede==="todas"?"todas las sedes":SEDE_LABEL[STATE.recSede]||STATE.recSede}`;
 }
 
 function renderRecPendientes(){
   const pendientes = getPendientes();
   const el = document.getElementById("recPendientesList");
-  if(pendientes.length===0){ el.innerHTML = `<div class="panel-empty">No hay reservas pendientes de cargar reclamo.</div>`; return; }
+  if(pendientes.length===0){ el.innerHTML = `<div class="panel-empty">No hay reservas pendientes de cargar. ✅</div>`; return; }
   el.innerHTML = pendientes.map(p => `
     <div class="list-row" data-movil="${p.movil}" data-reserva="${p.numeroReserva}" data-sede="${(p.sede||"").toString().trim()}">
       <span class="list-plate">Móvil ${p.movil}</span>
@@ -1711,8 +1808,8 @@ function renderRecPorSede(){
   const sedes = [...new Set(scoped.map(r=>r.sede).filter(Boolean))];
   const rows = sedes.map(s => {
     const items = scoped.filter(r=>r.sede===s);
-    const con = items.filter(r=>r.reclamo==="SI").length;
-    return { sede:s, total:items.length, con, pct: items.length?Math.round(con/items.length*100):0 };
+    const rec = items.filter(esReclamo).length;
+    return { sede:s, total:items.length, rec, pct: items.length?Math.round(rec/items.length*100):0 };
   }).sort((a,b)=>b.total-a.total);
   const el = document.getElementById("recSedeList");
   if(rows.length===0){ el.innerHTML = `<div class="panel-empty">Sin datos en esta vista.</div>`; return; }
@@ -1720,12 +1817,12 @@ function renderRecPorSede(){
     <div class="list-row">
       <span class="list-plate">${SEDE_LABEL[r.sede]||r.sede}</span>
       <span class="list-bar-wrap" style="display:block;"><span class="list-bar" style="width:${r.pct}%; background:var(--red)"></span></span>
-      <span class="list-right">${r.con}/${r.total} (${r.pct}%)</span>
+      <span class="list-right">${r.rec}/${r.total} (${r.pct}%)</span>
     </div>`).join("");
 }
 
 function renderRecPorCategoria(){
-  const scoped = getReclamosScoped().filter(r=>r.reclamo==="SI" && r.categoria);
+  const scoped = getReclamosScoped().filter(r=>esReclamo(r) && r.categoria);
   const counts = {};
   scoped.forEach(r => { const c = r.categoria.trim()||"Otros"; counts[c] = (counts[c]||0)+1; });
   const rows = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,8);
@@ -1740,20 +1837,109 @@ function renderRecPorCategoria(){
     </div>`).join("");
 }
 
-function renderRecNCHistorico(){
-  const nc = RAW_DATA.noConformidades||[];
+function renderChartTendencia(){
+  destroyChart("tendencia");
+  const todos = (RAW_DATA.reclamos||[]).filter(r => STATE.recSede==="todas" || r.sede===STATE.recSede);
+  const porMes = {};
+  MESES_ORDEN.forEach(m => porMes[m] = { total:0, reclamos:0, consultas:0 });
+  todos.forEach(r => {
+    if(!porMes[r.mes]) return;
+    porMes[r.mes].total++;
+    if(esReclamo(r)) porMes[r.mes].reclamos++;
+    else if(esConsulta(r)) porMes[r.mes].consultas++;
+  });
+  const meses = MESES_ORDEN.filter(m => porMes[m].total > 0);
+  if(!meses.length) return;
+  const ctx = document.getElementById("chartTendencia");
+  if(!ctx) return;
+  _charts["tendencia"] = new Chart(ctx, {
+    type:"line",
+    data:{
+      labels: meses,
+      datasets:[
+        { label:"Reclamos", data:meses.map(m=>porMes[m].reclamos), borderColor:"#EF4444", backgroundColor:"rgba(239,68,68,0.1)", tension:0.3, fill:true, pointRadius:4 },
+        { label:"Consultas", data:meses.map(m=>porMes[m].consultas), borderColor:"#F59E0B", backgroundColor:"rgba(245,158,11,0.1)", tension:0.3, fill:true, pointRadius:4 },
+        { label:"Total", data:meses.map(m=>porMes[m].total), borderColor:"#6366F1", backgroundColor:"transparent", tension:0.3, borderDash:[4,4], pointRadius:3 }
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ labels:{ color:"#8B93A1", font:{ size:11 } } } },
+      scales:{
+        x:{ ticks:{ color:"#8B93A1", font:{ size:10 } }, grid:{ color:"#272C36" } },
+        y:{ ticks:{ color:"#8B93A1", font:{ size:10 } }, grid:{ color:"#272C36" }, beginAtZero:true }
+      }
+    }
+  });
+}
+
+function renderChartTorta(){
+  destroyChart("torta");
+  const mesActual = MESES_ORDEN[new Date().getMonth()];
+  const scoped = (RAW_DATA.reclamos||[]).filter(r => r.mes===mesActual && (STATE.recSede==="todas"||r.sede===STATE.recSede));
+  if(!scoped.length) return;
+  const reclamos = scoped.filter(esReclamo);
+  const consultas = scoped.filter(esConsulta).length;
+  const sinNovedad = scoped.length - reclamos.length - consultas;
+  const leves = reclamos.filter(r=>r.gravedad==="LEVE"||!r.gravedad).length;
+  const graves = reclamos.filter(r=>r.gravedad==="GRAVE").length;
+  const muyGraves = reclamos.filter(r=>r.gravedad==="MUY_GRAVE").length;
+  const ctx = document.getElementById("chartTorta");
+  if(!ctx) return;
+  _charts["torta"] = new Chart(ctx, {
+    type:"doughnut",
+    data:{
+      labels:["Sin novedad","Consultas","Reclamo leve","Reclamo grave","Muy grave"],
+      datasets:[{ data:[sinNovedad,consultas,leves,graves,muyGraves], backgroundColor:["#2FB67C","#F59E0B","#FB923C","#EF4444","#7F1D1D"], borderWidth:2, borderColor:"#161922" }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false, cutout:"65%",
+      plugins:{
+        legend:{ position:"bottom", labels:{ color:"#8B93A1", font:{ size:10 }, padding:10 } },
+        title:{ display:true, text:`${mesActual} · ${scoped.length} reservas`, color:"#8B93A1", font:{ size:11 } }
+      }
+    }
+  });
+}
+
+function renderChartParetoMovil(){
+  destroyChart("paretoMovil");
+  const scoped = getReclamosScoped().filter(esReclamo);
   const counts = {};
-  nc.forEach(n => { const c = (n.categoria||"Otros").split("/")[0].trim(); counts[c] = (counts[c]||0)+1; });
-  const rows = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,10);
-  const max = rows.length ? rows[0][1] : 1;
-  const el = document.getElementById("recNCList");
-  if(rows.length===0){ el.innerHTML = `<div class="panel-empty">Conectá la hoja de No Conformidades para ver el histórico.</div>`; return; }
-  el.innerHTML = rows.map(([cat,n]) => `
-    <div class="list-row">
-      <span class="list-title">${cat}</span>
-      <span class="list-bar-wrap" style="display:block;"><span class="list-bar" style="width:${n/max*100}%; background:var(--muted)"></span></span>
-      <span class="list-right">${n}</span>
-    </div>`).join("");
+  scoped.forEach(r => { const k = `M${r.movil}`; counts[k]=(counts[k]||0)+1; });
+  const rows = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,12);
+  const ctx = document.getElementById("chartParetoMovil");
+  if(!ctx||!rows.length) return;
+  _charts["paretoMovil"] = new Chart(ctx, {
+    type:"bar",
+    data:{
+      labels: rows.map(r=>r[0]),
+      datasets:[{ label:"Reclamos", data:rows.map(r=>r[1]), backgroundColor:rows.map((_,i)=> i===0?"#EF4444":i===1?"#F97316":"#F59E0B"), borderRadius:5 }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false, indexAxis:"y",
+      plugins:{ legend:{ display:false } },
+      scales:{
+        x:{ ticks:{ color:"#8B93A1", font:{size:10} }, grid:{ color:"#272C36" }, beginAtZero:true },
+        y:{ ticks:{ color:"#E6E8EC", font:{size:11, weight:"600"} }, grid:{ display:false } }
+      }
+    }
+  });
+}
+
+function renderReclamosTab(){
+  renderRecSidebarFilters();
+  renderRecKPIs();
+  renderChartTendencia();
+  renderChartTorta();
+  renderChartParetoMovil();
+  renderRecPendientes();
+  renderRecPorSede();
+  renderRecPorCategoria();
+  renderCalBanner();
+  renderRecCalendar();
+  document.getElementById("modeBadgeRec").textContent = document.getElementById("modeBadge").textContent;
+  document.getElementById("syncInfoRec").textContent = document.getElementById("syncInfo").textContent;
 }
 
 function renderCalBanner(){
@@ -1847,6 +2033,132 @@ function openReservaModal(){
 }
 function closeReservaModal(){ document.getElementById("reservaModalBackdrop").classList.remove("open"); }
 
+function generarInformePDF(mes, sede){
+  const sedes = sede === "todas"
+    ? [...new Set((RAW_DATA.reclamos||[]).map(r=>r.sede).filter(Boolean))]
+    : [sede];
+
+  sedes.forEach(s => {
+    let datos = (RAW_DATA.reclamos||[]).filter(r => r.sede === s);
+    if(mes !== "todas") datos = datos.filter(r => r.mes === mes);
+    if(datos.length === 0){ showToast(`Sin datos para ${SEDE_LABEL[s]||s}${mes!=="todas"?" — "+mes:""}`, true); return; }
+
+    const conRec = datos.filter(esReclamo);
+    const sinRec = datos.filter(r=>!esReclamo(r));
+    const consultas = datos.filter(esConsulta).length;
+    const tasa = Math.round(conRec.length/datos.length*100);
+    const muygrave = conRec.filter(r=>r.gravedad==="MUY_GRAVE").length;
+
+    // Pareto de categorías
+    const cats = {};
+    conRec.forEach(r=>{ const c=r.categoria||"Sin categoría"; cats[c]=(cats[c]||0)+1; });
+    const paretoRows = Object.entries(cats).sort((a,b)=>b[1]-a[1])
+      .map(([cat,n])=>`<tr><td>${cat}</td><td style="text-align:center">${n}</td><td style="text-align:center">${Math.round(n/conRec.length*100)}%</td></tr>`).join("");
+
+    // Detalle por móvil
+    const porMovil = {};
+    datos.forEach(r=>{ if(!porMovil[r.movil]) porMovil[r.movil]=[]; porMovil[r.movil].push(r); });
+    const movilRows = Object.entries(porMovil).sort((a,b)=>Number(a[0])-Number(b[0])).map(([movil,list])=>{
+      const recList = list.filter(esReclamo);
+      return `<tr>
+        <td>Móvil ${movil}</td>
+        <td style="text-align:center">${list.length}</td>
+        <td style="text-align:center">${recList.length}</td>
+        <td style="text-align:center">${list.filter(esConsulta).length}</td>
+        <td style="text-align:center">${list.length-recList.length-list.filter(esConsulta).length}</td>
+        <td style="text-align:center;color:${recList.length>0?"#c0392b":"#27ae60"}">${Math.round(recList.length/list.length*100)}%</td>
+      </tr>`;
+    }).join("");
+
+    // Detalle completo de reservas con reclamo
+    const detalleRows = conRec.map(r=>`<tr>
+      <td>Móvil ${r.movil}</td>
+      <td style="text-align:center">${r.numeroReserva||"—"}</td>
+      <td style="text-align:center;color:${r.gravedad==="MUY_GRAVE"?"#7F1D1D":r.gravedad==="GRAVE"?"#c0392b":"#d35400"}">${GRAVEDAD_LABEL_MAP[r.gravedad]||r.gravedad||"—"}</td>
+      <td>${r.categoria||"—"}</td>
+      <td>${r.detalle||"—"}</td>
+    </tr>`).join("");
+
+    const mesLabel = mes==="todas" ? "Todos los meses" : mes;
+    const sedeLabel = SEDE_LABEL[s]||s;
+    const fecha = new Date().toLocaleDateString("es-AR");
+
+    const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Informe de Reclamos — ${sedeLabel} — ${mesLabel}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Arial', sans-serif; color: #1a1a2e; font-size: 13px; padding: 32px; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #1a1a2e; padding-bottom: 16px; margin-bottom: 24px; }
+  .header h1 { font-size: 22px; font-weight: 800; }
+  .header .meta { font-size: 12px; color: #555; text-align: right; }
+  .kpis { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 24px; }
+  .kpi { background: #f4f6fa; border-radius: 8px; padding: 14px 16px; }
+  .kpi .val { font-size: 28px; font-weight: 800; }
+  .kpi .lbl { font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: .04em; margin-top: 4px; }
+  .kpi.red .val { color: #c0392b; }
+  .kpi.green .val { color: #27ae60; }
+  .kpi.amber .val { color: #d35400; }
+  h2 { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #555; margin: 24px 0 10px; border-bottom: 1px solid #ddd; padding-bottom: 6px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+  th { background: #1a1a2e; color: #fff; font-size: 11px; padding: 8px 10px; text-align: left; }
+  td { padding: 7px 10px; border-bottom: 1px solid #eee; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) td { background: #f9f9f9; }
+  .footer { margin-top: 32px; padding-top: 12px; border-top: 1px solid #ddd; font-size: 11px; color: #888; text-align: center; }
+  @media print { body { padding: 16px; } }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Informe de Reclamos — Control de Flota</div>
+      <h1>${sedeLabel} · ${mesLabel}</h1>
+    </div>
+    <div class="meta">Generado el ${fecha}<br>Cinzia · Control de Flota</div>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="val">${datos.length}</div><div class="lbl">Total reservas</div></div>
+    <div class="kpi red"><div class="val">${conRec.length}</div><div class="lbl">Reclamos</div></div>
+    <div class="kpi amber"><div class="val">${consultas}</div><div class="lbl">Consultas</div></div>
+    <div class="kpi green"><div class="val">${sinRec.length-consultas}</div><div class="lbl">Sin novedad</div></div>
+    <div class="kpi amber"><div class="val">${tasa}%</div><div class="lbl">Tasa reclamo</div></div>
+    <div class="kpi red"><div class="val">${muygrave}</div><div class="lbl">Muy graves</div></div>
+  </div>
+
+  <h2>Reclamos por móvil</h2>
+  <table>
+    <thead><tr><th>Móvil</th><th>Total</th><th>Reclamos</th><th>Consultas</th><th>Sin novedad</th><th>Tasa</th></tr></thead>
+    <tbody>${movilRows}</tbody>
+  </table>
+
+  <h2>Principales problemas (Pareto por categoría)</h2>
+  <table>
+    <thead><tr><th>Categoría del problema</th><th>Cantidad</th><th>% del total con reclamo</th></tr></thead>
+    <tbody>${paretoRows}</tbody>
+  </table>
+
+  <h2>Detalle de reservas con reclamo</h2>
+  <table>
+    <thead><tr><th>Móvil</th><th>N° Reserva</th><th>Gravedad</th><th>Categoría</th><th>Detalle del problema</th></tr></thead>
+    <tbody>${detalleRows}</tbody>
+  </table>
+
+  <div class="footer">Informe generado automáticamente por el dashboard de Control de Flota · ${sedeLabel} · ${mesLabel} · ${fecha}</div>
+</body>
+</html>`;
+
+    // Abrir en ventana nueva y disparar el diálogo de impresión/guardar como PDF
+    const win = window.open("", `informe_${s}_${mes}`, "width=900,height=700");
+    win.document.write(html);
+    win.document.close();
+    win.onload = () => { win.focus(); win.print(); };
+  });
+}
+
 function registrarReservaCalendario(payload){
   RAW_DATA.calendarioReservas = RAW_DATA.calendarioReservas || [];
   const existing = RAW_DATA.calendarioReservas.find(r => String(r.movil)===String(payload.movil) && r.numeroReserva===payload.numeroReserva);
@@ -1864,7 +2176,9 @@ function openRecModal(prefill){
   document.getElementById("recMovil").value = prefill?.movil || "";
   document.getElementById("recNumeroReserva").value = prefill?.numeroReserva || "";
   document.getElementById("recSede").value = prefill?.sede || "CBA";
-  document.getElementById("recReclamo").value = "NO";
+  document.getElementById("recTipo").value = "SIN_NOVEDAD";
+  document.getElementById("recGravedad").value = "LEVE";
+  document.getElementById("recGravedadField").style.display = "none";
   document.getElementById("recCategoria").value = "";
   document.getElementById("recDetalle").value = "";
   document.getElementById("recModalBackdrop").classList.add("open");
@@ -2424,6 +2738,16 @@ document.addEventListener("keydown", e => {
 
 document.querySelectorAll(".top-tab").forEach(b => b.addEventListener("click", () => switchTab(b.dataset.tab)));
 
+document.getElementById("openInformeBtn").addEventListener("click", () => document.getElementById("informeModalBackdrop").classList.add("open"));
+document.querySelectorAll("[data-close-informe]").forEach(b => b.addEventListener("click", () => document.getElementById("informeModalBackdrop").classList.remove("open")));
+document.getElementById("informeModalBackdrop").addEventListener("click", e => { if(e.target===e.currentTarget) document.getElementById("informeModalBackdrop").classList.remove("open"); });
+document.getElementById("informeSubmit").addEventListener("click", () => {
+  const mes = document.getElementById("informeMes").value;
+  const sede = document.getElementById("informeSede").value;
+  document.getElementById("informeModalBackdrop").classList.remove("open");
+  generarInformePDF(mes, sede);
+});
+
 document.getElementById("openReservaBtn").addEventListener("click", () => openReservaModal());
 document.querySelectorAll("[data-close-reserva]").forEach(b => b.addEventListener("click", closeReservaModal));
 document.getElementById("reservaModalBackdrop").addEventListener("click", e => { if(e.target === e.currentTarget) closeReservaModal(); });
@@ -2446,15 +2770,22 @@ document.getElementById("refreshBtnRec").addEventListener("click", e => {
 document.querySelectorAll("[data-close-rec]").forEach(b => b.addEventListener("click", closeRecModal));
 document.getElementById("recModalBackdrop").addEventListener("click", e => { if(e.target === e.currentTarget) closeRecModal(); });
 
+// Mostrar/ocultar campo de gravedad según el tipo seleccionado
+document.getElementById("recTipo").addEventListener("change", () => {
+  const esRec = document.getElementById("recTipo").value === "RECLAMO";
+  document.getElementById("recGravedadField").style.display = esRec ? "flex" : "none";
+});
+
 document.getElementById("recSubmit").addEventListener("click", () => {
   const movil = document.getElementById("recMovil").value.trim();
   const numeroReserva = document.getElementById("recNumeroReserva").value.trim();
   const sede = document.getElementById("recSede").value;
-  const reclamo = document.getElementById("recReclamo").value;
+  const tipo = document.getElementById("recTipo").value;
+  const gravedad = tipo === "RECLAMO" ? document.getElementById("recGravedad").value : "";
   const categoria = document.getElementById("recCategoria").value.trim();
   const detalle = document.getElementById("recDetalle").value.trim();
   if(!movil || !numeroReserva){ showToast("Completá móvil y N° de reserva.", true); return; }
-  registrarReclamo({ mes:MESES_ORDEN[new Date().getMonth()], movil:Number(movil), numeroReserva, sede, reclamo, categoria, detalle });
+  registrarReclamo({ mes:MESES_ORDEN[new Date().getMonth()], movil:Number(movil), numeroReserva, sede, tipo, gravedad, categoria, detalle });
 });
 
 document.getElementById("recCalPrev").addEventListener("click", () => {
