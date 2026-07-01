@@ -152,6 +152,14 @@
   .cal-day .cal-dot{width:5px; height:5px; border-radius:50%;}
   .cal-day.selected{border-color:var(--accent); background:var(--accent-soft);}
 
+  /* ---- Tablero de No Conformidades ---- */
+  .nc-row{display:grid; grid-template-columns:80px 90px 1fr 1fr 110px; gap:8px; align-items:center; padding:9px 4px; border-top:1px solid var(--border); font-size:12.5px;}
+  .nc-row:first-of-type{border-top:none;}
+  .nc-badge{display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700; padding:3px 8px; border-radius:99px; cursor:pointer; border:none; user-select:none;}
+  .nc-badge.abierta{background:rgba(239,68,68,.15); color:#EF4444;}
+  .nc-badge.cerrada{background:rgba(47,182,124,.15); color:#2FB67C;}
+  .nc-header{display:grid; grid-template-columns:80px 90px 1fr 1fr 110px; gap:8px; padding:6px 4px; font-size:10.5px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; border-bottom:1px solid var(--border-strong); margin-bottom:4px;}
+
   .cal-banner{
     display:flex; align-items:center; gap:8px; padding:9px 12px; border-radius:8px; font-size:12px; font-weight:600;
     margin:10px 0 4px;
@@ -591,6 +599,7 @@
         <div class="panel">
           <div class="panel-title">Pareto de reclamos por móvil</div>
           <div style="position:relative;height:220px;"><canvas id="chartParetoMovil"></canvas></div>
+          <div id="paretoMovilDetalle" style="margin-top:12px;"></div>
         </div>
         <div class="panel">
           <div class="panel-title">Pareto por categoría de problema</div>
@@ -620,6 +629,15 @@
           <div class="cal-grid" id="recCalGrid"></div>
           <div id="recCalDayDetail" style="margin-top:10px;"></div>
         </div>
+      </div>
+
+      <!-- Tablero de No Conformidades -->
+      <div class="panel" style="margin-top:20px;">
+        <div class="panel-title">
+          Tablero de No Conformidades
+          <span style="margin-left:auto;font-size:11px;color:var(--muted);font-weight:400;">Cada reclamo cargado genera una NC automáticamente</span>
+        </div>
+        <div id="ncTablero"></div>
       </div>
     </div>
   </div>
@@ -776,18 +794,10 @@
     <div class="field"><label>Sede</label>
       <select id="recSede"><option value="CBA">Córdoba</option><option value="BSAS">Buenos Aires</option><option value="BRC">Bariloche</option><option value="SALTA">Salta</option></select>
     </div>
-    <div class="field"><label>Tipo</label>
-      <select id="recTipo">
-        <option value="SIN_NOVEDAD">Sin novedad</option>
-        <option value="CONSULTA">Consulta (sin reclamo)</option>
-        <option value="RECLAMO">Reclamo</option>
-      </select>
-    </div>
-    <div id="recGravedadField" class="field" style="display:none"><label>Gravedad del reclamo</label>
-      <select id="recGravedad">
-        <option value="LEVE">Leve</option>
-        <option value="GRAVE">Grave</option>
-        <option value="MUY_GRAVE">Muy grave</option>
+    <div class="field"><label>¿Tuvo reclamo?</label>
+      <select id="recReclamo">
+        <option value="NO">No</option>
+        <option value="SI">Sí</option>
       </select>
     </div>
     <div class="field"><label>Categoría</label>
@@ -1397,7 +1407,8 @@ let RAW_DATA = null;
 let STATE = {
   vehicles:[], filter:"all", zona:"todas", search:"", tab:"flota",
   recSede:"todas", recMes:"todas",
-  recCalYear: new Date().getFullYear(), recCalMonth: new Date().getMonth()
+  recCalYear: new Date().getFullYear(), recCalMonth: new Date().getMonth(),
+  ncEstados: {} // key: "movil|reserva" → "cerrada"|"abierta"
 };
 
 function fmtKm(n){ return Math.round(n).toLocaleString("es-AR"); }
@@ -1744,11 +1755,8 @@ function renderRecSidebarFilters(){
   document.querySelectorAll("[data-recmes]").forEach(b => b.addEventListener("click", () => { STATE.recMes = b.dataset.recmes; renderReclamosTab(); }));
 }
 
-// Helpers de tipo/gravedad
-const GRAVEDAD_COLOR = { LEVE:"#F59E0B", GRAVE:"#EF4444", MUY_GRAVE:"#7F1D1D" };
-const GRAVEDAD_LABEL_MAP = { LEVE:"Leve", GRAVE:"Grave", MUY_GRAVE:"Muy grave" };
+// Helpers de tipo de reclamo (simplificado: SI/NO)
 function esReclamo(r){ return r.tipo==="RECLAMO" || r.reclamo==="SI"; }
-function esConsulta(r){ return r.tipo==="CONSULTA"; }
 
 // Instancias activas de Chart.js
 const _charts = {};
@@ -1758,17 +1766,13 @@ function renderRecKPIs(){
   const scoped = getReclamosScoped();
   const total = scoped.length;
   const reclamos = scoped.filter(esReclamo).length;
-  const consultas = scoped.filter(esConsulta).length;
-  const sinNovedad = total - reclamos - consultas;
+  const sinReclamo = total - reclamos;
   const tasa = total ? Math.round(reclamos/total*100) : 0;
-  const muygrave = scoped.filter(r=>esReclamo(r)&&r.gravedad==="MUY_GRAVE").length;
   const cards = [
     { label:"Total reservas", value:total, frac:1, color:"var(--accent)" },
-    { label:"Reclamos", value:reclamos, frac:total?reclamos/total:0, color:"var(--red)" },
-    { label:"Consultas", value:consultas, frac:total?consultas/total:0, color:"var(--amber)" },
-    { label:"Sin novedad", value:sinNovedad, frac:total?sinNovedad/total:0, color:"var(--green)" },
-    { label:"Tasa de reclamo", value:`${tasa}%`, frac:tasa/100, color:tasa>=40?"var(--red)":tasa>=20?"var(--amber)":"var(--green)" },
-    { label:"Muy graves", value:muygrave, frac:reclamos?muygrave/reclamos:0, color:"#7F1D1D" }
+    { label:"Con reclamo", value:reclamos, frac:total?reclamos/total:0, color:"var(--red)" },
+    { label:"Sin reclamo", value:sinReclamo, frac:total?sinReclamo/total:0, color:"var(--green)" },
+    { label:"Tasa de reclamo", value:`${tasa}%`, frac:tasa/100, color:tasa>=40?"var(--red)":tasa>=20?"var(--amber)":"var(--green)" }
   ];
   document.getElementById("recKpiRow").innerHTML = cards.map(c => `
     <div class="kpi-card">
@@ -1846,7 +1850,6 @@ function renderChartTendencia(){
     if(!porMes[r.mes]) return;
     porMes[r.mes].total++;
     if(esReclamo(r)) porMes[r.mes].reclamos++;
-    else if(esConsulta(r)) porMes[r.mes].consultas++;
   });
   const meses = MESES_ORDEN.filter(m => porMes[m].total > 0);
   if(!meses.length) return;
@@ -1858,7 +1861,7 @@ function renderChartTendencia(){
       labels: meses,
       datasets:[
         { label:"Reclamos", data:meses.map(m=>porMes[m].reclamos), borderColor:"#EF4444", backgroundColor:"rgba(239,68,68,0.1)", tension:0.3, fill:true, pointRadius:4 },
-        { label:"Consultas", data:meses.map(m=>porMes[m].consultas), borderColor:"#F59E0B", backgroundColor:"rgba(245,158,11,0.1)", tension:0.3, fill:true, pointRadius:4 },
+        { label:"Sin reclamo", data:meses.map(m=>porMes[m].total-porMes[m].reclamos), borderColor:"#2FB67C", backgroundColor:"rgba(47,182,124,0.1)", tension:0.3, fill:true, pointRadius:4 },
         { label:"Total", data:meses.map(m=>porMes[m].total), borderColor:"#6366F1", backgroundColor:"transparent", tension:0.3, borderDash:[4,4], pointRadius:3 }
       ]
     },
@@ -1878,19 +1881,15 @@ function renderChartTorta(){
   const mesActual = MESES_ORDEN[new Date().getMonth()];
   const scoped = (RAW_DATA.reclamos||[]).filter(r => r.mes===mesActual && (STATE.recSede==="todas"||r.sede===STATE.recSede));
   if(!scoped.length) return;
-  const reclamos = scoped.filter(esReclamo);
-  const consultas = scoped.filter(esConsulta).length;
-  const sinNovedad = scoped.length - reclamos.length - consultas;
-  const leves = reclamos.filter(r=>r.gravedad==="LEVE"||!r.gravedad).length;
-  const graves = reclamos.filter(r=>r.gravedad==="GRAVE").length;
-  const muyGraves = reclamos.filter(r=>r.gravedad==="MUY_GRAVE").length;
+  const recCount = scoped.filter(esReclamo).length;
+  const sinCount = scoped.length - recCount;
   const ctx = document.getElementById("chartTorta");
   if(!ctx) return;
   _charts["torta"] = new Chart(ctx, {
     type:"doughnut",
     data:{
-      labels:["Sin novedad","Consultas","Reclamo leve","Reclamo grave","Muy grave"],
-      datasets:[{ data:[sinNovedad,consultas,leves,graves,muyGraves], backgroundColor:["#2FB67C","#F59E0B","#FB923C","#EF4444","#7F1D1D"], borderWidth:2, borderColor:"#161922" }]
+      labels:["Sin reclamo","Con reclamo"],
+      datasets:[{ data:[sinCount,recCount], backgroundColor:["#2FB67C","#EF4444"], borderWidth:2, borderColor:"#161922" }]
     },
     options:{
       responsive:true, maintainAspectRatio:false, cutout:"65%",
@@ -1904,6 +1903,7 @@ function renderChartTorta(){
 
 function renderChartParetoMovil(){
   destroyChart("paretoMovil");
+  document.getElementById("paretoMovilDetalle").innerHTML = "";
   const scoped = getReclamosScoped().filter(esReclamo);
   const counts = {};
   scoped.forEach(r => { const k = `M${r.movil}`; counts[k]=(counts[k]||0)+1; });
@@ -1914,17 +1914,42 @@ function renderChartParetoMovil(){
     type:"bar",
     data:{
       labels: rows.map(r=>r[0]),
-      datasets:[{ label:"Reclamos", data:rows.map(r=>r[1]), backgroundColor:rows.map((_,i)=> i===0?"#EF4444":i===1?"#F97316":"#F59E0B"), borderRadius:5 }]
+      datasets:[{ label:"Reclamos", data:rows.map(r=>r[1]),
+        backgroundColor:rows.map((_,i)=> i===0?"#EF4444":i===1?"#F97316":"#F59E0B"),
+        borderRadius:6 }]
     },
     options:{
-      responsive:true, maintainAspectRatio:false, indexAxis:"y",
-      plugins:{ legend:{ display:false } },
+      responsive:true, maintainAspectRatio:false,
+      onClick:(evt, elements) => {
+        if(!elements.length) return;
+        const label = rows[elements[0].index][0]; // "M21"
+        const movilNum = Number(label.replace("M",""));
+        mostrarDetalleMovil(movilNum);
+      },
+      plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ title: items => items[0].label, label: item => `${item.raw} reclamo${item.raw!==1?"s":""}` } } },
       scales:{
-        x:{ ticks:{ color:"#8B93A1", font:{size:10} }, grid:{ color:"#272C36" }, beginAtZero:true },
-        y:{ ticks:{ color:"#E6E8EC", font:{size:11, weight:"600"} }, grid:{ display:false } }
+        x:{ ticks:{ color:"#E6E8EC", font:{size:11, weight:"600"} }, grid:{ display:false } },
+        y:{ ticks:{ color:"#8B93A1", font:{size:10} }, grid:{ color:"#272C36" }, beginAtZero:true }
       }
     }
   });
+}
+
+function mostrarDetalleMovil(movilNum){
+  const quejas = getReclamosScoped().filter(r => esReclamo(r) && r.movil===movilNum);
+  const el = document.getElementById("paretoMovilDetalle");
+  if(!quejas.length){ el.innerHTML = `<div class="panel-empty">Sin reclamos registrados para Móvil ${movilNum}.</div>`; return; }
+  el.innerHTML = `
+    <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">
+      Detalle — Móvil ${movilNum} (${quejas.length} reclamo${quejas.length!==1?"s":""})
+    </div>
+    ${quejas.map(q=>`
+      <div class="list-row" style="flex-wrap:wrap;gap:4px;">
+        <span class="list-plate">Res. ${q.numeroReserva||"—"}</span>
+        <span class="list-title">${q.categoria||"Sin categoría"}</span>
+        <span class="list-right" style="color:var(--muted);font-size:11px;">${q.mes||""}</span>
+        ${q.detalle?`<span style="width:100%;font-size:11.5px;color:var(--muted);padding-left:4px;">${q.detalle}</span>`:""}
+      </div>`).join("")}`;
 }
 
 function renderReclamosTab(){
@@ -1935,14 +1960,48 @@ function renderReclamosTab(){
   renderRecPorCategoria();
   renderCalBanner();
   renderRecCalendar();
+  renderNCTablero();
   document.getElementById("modeBadgeRec").textContent = document.getElementById("modeBadge").textContent;
   document.getElementById("syncInfoRec").textContent = document.getElementById("syncInfo").textContent;
-  // Los gráficos se dibujan después de un tick para que el DOM haya mostrado los canvas
   setTimeout(() => {
     renderChartTendencia();
     renderChartTorta();
     renderChartParetoMovil();
   }, 50);
+}
+
+function renderNCTablero(){
+  const el = document.getElementById("ncTablero");
+  if(!el) return;
+  const reclamos = (RAW_DATA.reclamos||[]).filter(esReclamo);
+  if(!reclamos.length){
+    el.innerHTML = `<div class="panel-empty">No hay reclamos registrados. Cuando cargues uno, aparece acá como NC.</div>`;
+    return;
+  }
+  el.innerHTML = `<div class="nc-header">
+    <span>Móvil</span><span>Reserva</span><span>Categoría</span><span>Detalle</span><span>Estado NC</span>
+  </div>` + reclamos.map(r => {
+    const key = `${r.movil}|${r.numeroReserva}`;
+    const cerrada = (STATE.ncEstados||{})[key] !== undefined ? (STATE.ncEstados[key]==="cerrada") : true;
+    return `<div class="nc-row">
+      <span style="font-weight:700;">M${r.movil}</span>
+      <span style="color:var(--muted);">Res. ${r.numeroReserva||"—"}</span>
+      <span>${r.categoria||"—"}</span>
+      <span style="color:var(--muted);font-size:11.5px;">${r.detalle||"—"}</span>
+      <button class="nc-badge ${cerrada?"cerrada":"abierta"}" data-nc-key="${key}">
+        ${cerrada?"✓ Cerrada":"● Sin tratar"}
+      </button>
+    </div>`;
+  }).join("");
+  el.querySelectorAll("[data-nc-key]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      if(!STATE.ncEstados) STATE.ncEstados = {};
+      const key = btn.dataset.ncKey;
+      const actual = STATE.ncEstados[key] !== undefined ? STATE.ncEstados[key] : "cerrada";
+      STATE.ncEstados[key] = actual==="cerrada" ? "abierta" : "cerrada";
+      renderNCTablero();
+    });
+  });
 }
 
 function renderCalBanner(){
@@ -2036,9 +2095,7 @@ function generarInformePDF(mes, sede){
 
     const conRec = datos.filter(esReclamo);
     const sinRec = datos.filter(r=>!esReclamo(r));
-    const consultas = datos.filter(esConsulta).length;
-    const tasa = Math.round(conRec.length/datos.length*100);
-    const muygrave = conRec.filter(r=>r.gravedad==="MUY_GRAVE").length;
+    const tasa = datos.length ? Math.round(conRec.length/datos.length*100) : 0;
 
     // Pareto de categorías
     const cats = {};
@@ -2055,8 +2112,7 @@ function generarInformePDF(mes, sede){
         <td>Móvil ${movil}</td>
         <td style="text-align:center">${list.length}</td>
         <td style="text-align:center">${recList.length}</td>
-        <td style="text-align:center">${list.filter(esConsulta).length}</td>
-        <td style="text-align:center">${list.length-recList.length-list.filter(esConsulta).length}</td>
+        <td style="text-align:center">${list.length-recList.length}</td>
         <td style="text-align:center;color:${recList.length>0?"#c0392b":"#27ae60"}">${Math.round(recList.length/list.length*100)}%</td>
       </tr>`;
     }).join("");
@@ -2065,7 +2121,6 @@ function generarInformePDF(mes, sede){
     const detalleRows = conRec.map(r=>`<tr>
       <td>Móvil ${r.movil}</td>
       <td style="text-align:center">${r.numeroReserva||"—"}</td>
-      <td style="text-align:center;color:${r.gravedad==="MUY_GRAVE"?"#7F1D1D":r.gravedad==="GRAVE"?"#c0392b":"#d35400"}">${GRAVEDAD_LABEL_MAP[r.gravedad]||r.gravedad||"—"}</td>
       <td>${r.categoria||"—"}</td>
       <td>${r.detalle||"—"}</td>
     </tr>`).join("");
@@ -2113,16 +2168,14 @@ function generarInformePDF(mes, sede){
 
   <div class="kpis">
     <div class="kpi"><div class="val">${datos.length}</div><div class="lbl">Total reservas</div></div>
-    <div class="kpi red"><div class="val">${conRec.length}</div><div class="lbl">Reclamos</div></div>
-    <div class="kpi amber"><div class="val">${consultas}</div><div class="lbl">Consultas</div></div>
-    <div class="kpi green"><div class="val">${sinRec.length-consultas}</div><div class="lbl">Sin novedad</div></div>
+    <div class="kpi red"><div class="val">${conRec.length}</div><div class="lbl">Con reclamo</div></div>
+    <div class="kpi green"><div class="val">${sinRec.length}</div><div class="lbl">Sin reclamo</div></div>
     <div class="kpi amber"><div class="val">${tasa}%</div><div class="lbl">Tasa reclamo</div></div>
-    <div class="kpi red"><div class="val">${muygrave}</div><div class="lbl">Muy graves</div></div>
   </div>
 
   <h2>Reclamos por móvil</h2>
   <table>
-    <thead><tr><th>Móvil</th><th>Total</th><th>Reclamos</th><th>Consultas</th><th>Sin novedad</th><th>Tasa</th></tr></thead>
+    <thead><tr><th>Móvil</th><th>Total</th><th>Con reclamo</th><th>Sin reclamo</th><th>Tasa</th></tr></thead>
     <tbody>${movilRows}</tbody>
   </table>
 
@@ -2134,7 +2187,7 @@ function generarInformePDF(mes, sede){
 
   <h2>Detalle de reservas con reclamo</h2>
   <table>
-    <thead><tr><th>Móvil</th><th>N° Reserva</th><th>Gravedad</th><th>Categoría</th><th>Detalle del problema</th></tr></thead>
+    <thead><tr><th>Móvil</th><th>N° Reserva</th><th>Categoría</th><th>Detalle del problema</th></tr></thead>
     <tbody>${detalleRows}</tbody>
   </table>
 
@@ -2167,9 +2220,7 @@ function openRecModal(prefill){
   document.getElementById("recMovil").value = prefill?.movil || "";
   document.getElementById("recNumeroReserva").value = prefill?.numeroReserva || "";
   document.getElementById("recSede").value = prefill?.sede || "CBA";
-  document.getElementById("recTipo").value = "SIN_NOVEDAD";
-  document.getElementById("recGravedad").value = "LEVE";
-  document.getElementById("recGravedadField").style.display = "none";
+  document.getElementById("recReclamo").value = "NO";
   document.getElementById("recCategoria").value = "";
   document.getElementById("recDetalle").value = "";
   document.getElementById("recModalBackdrop").classList.add("open");
@@ -2181,6 +2232,11 @@ function registrarReclamo(payload){
   const existing = RAW_DATA.reclamos.find(r => String(r.movil)===String(payload.movil) && r.numeroReserva===payload.numeroReserva);
   if(existing) Object.assign(existing, payload);
   else RAW_DATA.reclamos.push(payload);
+  // Si es un reclamo real (no sin novedad), lo marca como NC abierta (sin tratar) por defecto
+  if(payload.reclamo === "SI" || payload.tipo === "RECLAMO"){
+    const key = `${payload.movil}|${payload.numeroReserva}`;
+    STATE.ncEstados[key] = "abierta";
+  }
   closeRecModal();
   renderReclamosTab();
   enviarRegistro("reclamo", payload);
@@ -2761,22 +2817,15 @@ document.getElementById("refreshBtnRec").addEventListener("click", e => {
 document.querySelectorAll("[data-close-rec]").forEach(b => b.addEventListener("click", closeRecModal));
 document.getElementById("recModalBackdrop").addEventListener("click", e => { if(e.target === e.currentTarget) closeRecModal(); });
 
-// Mostrar/ocultar campo de gravedad según el tipo seleccionado
-document.getElementById("recTipo").addEventListener("change", () => {
-  const esRec = document.getElementById("recTipo").value === "RECLAMO";
-  document.getElementById("recGravedadField").style.display = esRec ? "flex" : "none";
-});
-
 document.getElementById("recSubmit").addEventListener("click", () => {
   const movil = document.getElementById("recMovil").value.trim();
   const numeroReserva = document.getElementById("recNumeroReserva").value.trim();
   const sede = document.getElementById("recSede").value;
-  const tipo = document.getElementById("recTipo").value;
-  const gravedad = tipo === "RECLAMO" ? document.getElementById("recGravedad").value : "";
+  const reclamo = document.getElementById("recReclamo").value;
   const categoria = document.getElementById("recCategoria").value.trim();
   const detalle = document.getElementById("recDetalle").value.trim();
   if(!movil || !numeroReserva){ showToast("Completá móvil y N° de reserva.", true); return; }
-  registrarReclamo({ mes:MESES_ORDEN[new Date().getMonth()], movil:Number(movil), numeroReserva, sede, tipo, gravedad, categoria, detalle });
+  registrarReclamo({ mes:MESES_ORDEN[new Date().getMonth()], movil:Number(movil), numeroReserva, sede, tipo:reclamo==="SI"?"RECLAMO":"SIN_NOVEDAD", reclamo, categoria, detalle });
 });
 
 document.getElementById("recCalPrev").addEventListener("click", () => {
