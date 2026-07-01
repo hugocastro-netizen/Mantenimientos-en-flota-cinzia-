@@ -455,14 +455,14 @@
       <div class="brand-sub">Mantenimiento &amp; inspección</div>
     </div>
 
-    <div>
-      <div class="side-label">Estado</div>
-      <div class="filter-list" id="estadoFilterList"></div>
-    </div>
-
     <div style="display:flex; flex-direction:column; min-height:0; flex:1;">
       <div class="side-label">Sucursales y móviles</div>
       <div class="filter-list filter-list-scroll" id="zonaTreeList"></div>
+    </div>
+
+    <div>
+      <div class="side-label">Filtrar por estado</div>
+      <div class="filter-list" id="estadoFilterList"></div>
     </div>
 
     <div class="actions-block">
@@ -1930,9 +1930,6 @@ function renderChartParetoMovil(){
 function renderReclamosTab(){
   renderRecSidebarFilters();
   renderRecKPIs();
-  renderChartTendencia();
-  renderChartTorta();
-  renderChartParetoMovil();
   renderRecPendientes();
   renderRecPorSede();
   renderRecPorCategoria();
@@ -1940,6 +1937,12 @@ function renderReclamosTab(){
   renderRecCalendar();
   document.getElementById("modeBadgeRec").textContent = document.getElementById("modeBadge").textContent;
   document.getElementById("syncInfoRec").textContent = document.getElementById("syncInfo").textContent;
+  // Los gráficos se dibujan después de un tick para que el DOM haya mostrado los canvas
+  setTimeout(() => {
+    renderChartTendencia();
+    renderChartTorta();
+    renderChartParetoMovil();
+  }, 50);
 }
 
 function renderCalBanner(){
@@ -2007,18 +2010,6 @@ function renderRecCalendar(){
       `).join("");
     });
   });
-}
-
-function renderReclamosTab(){
-  renderRecSidebarFilters();
-  renderRecKPIs();
-  renderRecPendientes();
-  renderRecPorSede();
-  renderRecPorCategoria();
-  renderRecCalendar();
-  renderRecNCHistorico();
-  document.getElementById("modeBadgeRec").textContent = document.getElementById("modeBadge").textContent;
-  document.getElementById("syncInfoRec").textContent = document.getElementById("syncInfo").textContent;
 }
 
 /* ---- Modal: cargar reserva (calendario) ---- */
