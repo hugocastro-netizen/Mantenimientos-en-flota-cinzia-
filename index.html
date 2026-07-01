@@ -159,6 +159,12 @@
   .nc-badge.abierta{background:rgba(239,68,68,.15); color:#EF4444;}
   .nc-badge.cerrada{background:rgba(47,182,124,.15); color:#2FB67C;}
   .nc-header{display:grid; grid-template-columns:80px 90px 1fr 1fr 110px; gap:8px; padding:6px 4px; font-size:10.5px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; border-bottom:1px solid var(--border-strong); margin-bottom:4px;}
+  .btn-icon-sm{
+    width:26px; height:26px; border-radius:6px; border:1px solid var(--border); background:var(--panel-2);
+    color:var(--muted); font-size:12px; cursor:pointer; flex:none; display:flex; align-items:center; justify-content:center;
+  }
+  .btn-icon-sm:hover{ border-color:var(--accent); color:var(--accent); }
+  .btn-icon-red:hover{ border-color:var(--red); color:var(--red); }
 
   .chart-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted);pointer-events:none;}
 
@@ -614,9 +620,13 @@
         <div id="recPendientesList"></div>
       </div>
 
-      <div class="panel" style="margin-bottom:20px;">
-        <div class="panel-title">Registros cargados <span style="color:var(--muted);font-size:11px;font-weight:400;">— tocá cualquiera para editar</span></div>
-        <div id="recRegistrosList"></div>
+      <div class="panel panel-accordion" style="margin-bottom:20px;">
+        <div class="panel-title accordion-toggle" id="recRegistrosToggle" style="cursor:pointer;user-select:none;">
+          <span>Registros cargados</span>
+          <span style="color:var(--muted);font-size:11px;font-weight:400;margin-left:8px;">tocá para ver y editar</span>
+          <span class="accordion-arrow" id="recRegistrosArrow" style="margin-left:auto;">▼</span>
+        </div>
+        <div id="recRegistrosList" style="display:none;"></div>
       </div>
 
       <div class="panel-row">
@@ -778,7 +788,29 @@
     <button class="modal-close" data-close-reserva>✕</button>
     <h3>Cargar reserva</h3>
     <p class="form-hint">Se puede cargar con anticipación, antes de que el viaje empiece. Cuando llegue la fecha de vuelta, va a aparecer sola en "Pendientes de cargar" para que digas si tuvo reclamo.</p>
-    <div class="field"><label>Móvil</label><input type="number" id="reservaMovil"></div>
+    <div class="field"><label>Móvil</label>
+      <select id="reservaMovil">
+        <option value="">— elegir —</option>
+        <option value="2">Móvil 2 — AF157QB (Córdoba)</option>
+        <option value="5">Móvil 5 — AE484AX (Córdoba)</option>
+        <option value="6">Móvil 6 — AE945YF (Córdoba)</option>
+        <option value="7">Móvil 7 — AF357LW (Córdoba)</option>
+        <option value="8">Móvil 8 — AD628TU (Bariloche)</option>
+        <option value="9">Móvil 9 — AF357LX (Córdoba)</option>
+        <option value="10">Móvil 10 — AF618FH (Bariloche)</option>
+        <option value="11">Móvil 11 — AF958VT (Córdoba)</option>
+        <option value="12">Móvil 12 — AF958VV (Buenos Aires)</option>
+        <option value="14">Móvil 14 — AF528TK (Buenos Aires)</option>
+        <option value="15">Móvil 15 — AG442DN (Córdoba)</option>
+        <option value="16">Móvil 16 — AF546KQ (Buenos Aires)</option>
+        <option value="17">Móvil 17 — AF840KE (Bariloche)</option>
+        <option value="18">Móvil 18 — AH143YT (Buenos Aires)</option>
+        <option value="19">Móvil 19 — AH499BL (Buenos Aires)</option>
+        <option value="20">Móvil 20 — AH719PO (Córdoba)</option>
+        <option value="21">Móvil 21 — AH719PP (Córdoba)</option>
+        <option value="22">Móvil 22 — AI019SV (Córdoba)</option>
+      </select>
+    </div>
     <div class="field"><label>N° de reserva</label><input type="text" id="reservaNumero"></div>
     <div class="field"><label>Sede</label>
       <select id="reservaSede"><option value="CBA">Córdoba</option><option value="BSAS">Buenos Aires</option><option value="BRC">Bariloche</option><option value="SALTA">Salta</option></select>
@@ -795,23 +827,91 @@
   <div class="modal form-modal">
     <button class="modal-close" data-close-rec>✕</button>
     <h3 id="recModalTitulo">Cargar reporte de reserva</h3>
-    <p class="form-hint">Una fila por reserva. Se actualiza si ya existe el mismo móvil + N° de reserva.</p>
-    <div class="field"><label>Móvil</label><input type="number" id="recMovil"></div>
-    <div class="field"><label>N° de reserva</label><input type="text" id="recNumeroReserva"></div>
-    <div class="field"><label>Sede</label>
-      <select id="recSede"><option value="CBA">Córdoba</option><option value="BSAS">Buenos Aires</option><option value="BRC">Bariloche</option><option value="SALTA">Salta</option></select>
+    <p class="form-hint">Una fila por reserva. Si ya existe el mismo móvil + N° de reserva, se actualiza.</p>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:0 14px;">
+      <div class="field"><label>Móvil</label>
+        <select id="recMovil">
+          <option value="">— elegir —</option>
+          <option value="2">Móvil 2 — AF157QB (Córdoba)</option>
+          <option value="5">Móvil 5 — AE484AX (Córdoba)</option>
+          <option value="6">Móvil 6 — AE945YF (Córdoba)</option>
+          <option value="7">Móvil 7 — AF357LW (Córdoba)</option>
+          <option value="8">Móvil 8 — AD628TU (Bariloche)</option>
+          <option value="9">Móvil 9 — AF357LX (Córdoba)</option>
+          <option value="10">Móvil 10 — AF618FH (Bariloche)</option>
+          <option value="11">Móvil 11 — AF958VT (Córdoba)</option>
+          <option value="12">Móvil 12 — AF958VV (Buenos Aires)</option>
+          <option value="14">Móvil 14 — AF528TK (Buenos Aires)</option>
+          <option value="15">Móvil 15 — AG442DN (Córdoba)</option>
+          <option value="16">Móvil 16 — AF546KQ (Buenos Aires)</option>
+          <option value="17">Móvil 17 — AF840KE (Bariloche)</option>
+          <option value="18">Móvil 18 — AH143YT (Buenos Aires)</option>
+          <option value="19">Móvil 19 — AH499BL (Buenos Aires)</option>
+          <option value="20">Móvil 20 — AH719PO (Córdoba)</option>
+          <option value="21">Móvil 21 — AH719PP (Córdoba)</option>
+          <option value="22">Móvil 22 — AI019SV (Córdoba)</option>
+        </select>
+      </div>
+      <div class="field"><label>N° de reserva</label><input type="text" id="recNumeroReserva"></div>
     </div>
-    <div class="field"><label>Tipo</label>
-      <select id="recTipo">
-        <option value="SIN_NOVEDAD">Sin novedad</option>
-        <option value="OBSERVACION">Observación (sin reclamo)</option>
-        <option value="RECLAMO">Reclamo</option>
-      </select>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0 14px;">
+      <div class="field"><label>Sede</label>
+        <select id="recSede">
+          <option value="CBA">Córdoba</option>
+          <option value="BSAS">Buenos Aires</option>
+          <option value="BRC">Bariloche</option>
+          <option value="SALTA">Salta</option>
+        </select>
+      </div>
+      <div class="field"><label>Mes de la reserva</label>
+        <select id="recMesReserva">
+          <option value="Enero">Enero</option>
+          <option value="Febrero">Febrero</option>
+          <option value="Marzo">Marzo</option>
+          <option value="Abril">Abril</option>
+          <option value="Mayo">Mayo</option>
+          <option value="Junio">Junio</option>
+          <option value="Julio">Julio</option>
+          <option value="Agosto">Agosto</option>
+          <option value="Septiembre">Septiembre</option>
+          <option value="Octubre">Octubre</option>
+          <option value="Noviembre">Noviembre</option>
+          <option value="Diciembre">Diciembre</option>
+        </select>
+      </div>
+      <div class="field"><label>Tipo</label>
+        <select id="recTipo">
+          <option value="SIN_NOVEDAD">Sin novedad</option>
+          <option value="OBSERVACION">Observación</option>
+          <option value="RECLAMO">Reclamo</option>
+        </select>
+      </div>
     </div>
+
     <div class="field"><label>Categoría</label>
-      <input type="text" id="recCategoria" placeholder="Ej: Agua/Sanitario, Eléctrico, Mecánica...">
+      <select id="recCategoriaSelect">
+        <option value="">— elegir categoría —</option>
+        <option value="Agua/Sanitario">Agua / Sanitario</option>
+        <option value="Eléctrico">Eléctrico</option>
+        <option value="Mecánica">Mecánica</option>
+        <option value="Carpintería/Muebles">Carpintería / Muebles</option>
+        <option value="Gas/Calefacción">Gas / Calefacción</option>
+        <option value="Climatización/AC">Climatización / AC</option>
+        <option value="Limpieza/Higiene">Limpieza / Higiene</option>
+        <option value="Cubiertas/Ruedas">Cubiertas / Ruedas</option>
+        <option value="Documentación">Documentación</option>
+        <option value="Comunicación/App">Comunicación / App</option>
+        <option value="Otro">Otro (escribir abajo)</option>
+      </select>
+      <input type="text" id="recCategoria" placeholder="Especificá la categoría si elegiste Otro, o dejalo vacío" style="margin-top:6px;">
     </div>
-    <div class="field"><label>Detalle</label><textarea id="recDetalle" rows="3" placeholder="Qué pasó, según el cliente o el inspector"></textarea></div>
+
+    <div class="field"><label>Detalle del reclamo / observación</label>
+      <textarea id="recDetalle" rows="4" placeholder="Describí qué pasó: qué reportó el cliente, qué encontró el inspector, cómo quedó resuelto (si aplica)…"></textarea>
+    </div>
+
     <button class="btn btn-primary btn-block" id="recSubmit">Guardar</button>
   </div>
 </div>
@@ -1998,33 +2098,70 @@ function mostrarDetalleMovil(movilNum){
 
 function renderRecRegistros(){
   const el = document.getElementById("recRegistrosList");
+  const toggle = document.getElementById("recRegistrosToggle");
+  const arrow = document.getElementById("recRegistrosArrow");
   if(!el) return;
+
   const scoped = getReclamosScoped().slice().sort((a,b) => {
     const o = { RECLAMO:0, OBSERVACION:1, SIN_NOVEDAD:2 };
     return (o[a.tipo]||2) - (o[b.tipo]||2);
   });
-  if(!scoped.length){ el.innerHTML = `<div class="panel-empty">No hay registros cargados en esta vista.</div>`; return; }
+
+  // Actualizar el contador en el título
+  const span = toggle?.querySelector("span");
+  if(span) span.textContent = `Registros cargados (${scoped.length})`;
+
+  if(!scoped.length){
+    el.innerHTML = `<div class="panel-empty">No hay registros cargados en esta vista.</div>`;
+    return;
+  }
+
   const TIPO_LABEL = { RECLAMO:"Reclamo", OBSERVACION:"Observación", SIN_NOVEDAD:"Sin novedad" };
   const TIPO_COLOR = { RECLAMO:"var(--red)", OBSERVACION:"var(--amber)", SIN_NOVEDAD:"var(--green)" };
+
   el.innerHTML = scoped.map(r => {
     const tipo = r.tipo || (r.reclamo==="SI" ? "RECLAMO" : "SIN_NOVEDAD");
     const color = TIPO_COLOR[tipo] || "var(--muted)";
     const label = TIPO_LABEL[tipo] || tipo;
-    return `<div class="list-row" style="cursor:pointer;" data-edit-reserva="${r.movil}|${r.numeroReserva}">
+    const key = `${r.movil}|${r.numeroReserva}`;
+    return `<div class="list-row" style="gap:6px;">
       <span class="list-plate">M${r.movil}</span>
-      <span style="font-size:11px;font-weight:700;color:${color};min-width:80px;">${label}</span>
-      <span class="list-title">${r.numeroReserva||"—"} ${r.mes?`· ${r.mes}`:""}</span>
-      <span class="list-right" style="color:var(--muted);font-size:11px;">${r.categoria||""}</span>
-      <span style="font-size:11px;color:var(--accent);margin-left:8px;">✎ editar</span>
+      <span style="font-size:11px;font-weight:700;color:${color};min-width:78px;">${label}</span>
+      <span class="list-title" style="flex:1;">${r.numeroReserva||"—"} ${r.mes?`· ${r.mes}`:""}</span>
+      <span style="color:var(--muted);font-size:11px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.categoria||""}</span>
+      <button class="btn-icon-sm" data-edit-key="${key}" title="Editar">✎</button>
+      <button class="btn-icon-sm btn-icon-red" data-del-key="${key}" title="Eliminar">✕</button>
     </div>`;
   }).join("");
-  el.querySelectorAll("[data-edit-reserva]").forEach(row => {
-    row.addEventListener("click", () => {
-      const [movil, numeroReserva] = row.dataset.editReserva.split("|");
-      const rec = (RAW_DATA.reclamos||[]).find(r => String(r.movil)===movil && r.numeroReserva===numeroReserva);
-      if(rec) openRecModal({ ...rec, editar:true });
+
+  el.querySelectorAll("[data-edit-key]").forEach(btn => {
+    btn.addEventListener("click", e => {
+      e.stopPropagation();
+      const rec = (RAW_DATA.reclamos||[]).find(r => `${r.movil}|${r.numeroReserva}` === btn.dataset.editKey);
+      if(rec) openRecModal({ ...rec, editar:true, _originalKey:btn.dataset.editKey });
     });
   });
+
+  el.querySelectorAll("[data-del-key]").forEach(btn => {
+    btn.addEventListener("click", e => {
+      e.stopPropagation();
+      const [movil, nroRes] = btn.dataset.delKey.split("|");
+      if(!confirm(`¿Eliminar el registro del Móvil ${movil}, Reserva ${nroRes}? Esta acción no se puede deshacer.`)) return;
+      RAW_DATA.reclamos = (RAW_DATA.reclamos||[]).filter(r => !(String(r.movil)===movil && r.numeroReserva===nroRes));
+      renderReclamosTab();
+      enviarRegistro("reclamo_eliminar", { movil:Number(movil), numeroReserva:nroRes });
+    });
+  });
+
+  // Conectar el toggle del acordeón (solo la primera vez, evitar duplicar listeners)
+  if(toggle && !toggle.dataset.listenerSet){
+    toggle.dataset.listenerSet = "1";
+    toggle.addEventListener("click", () => {
+      const visible = el.style.display !== "none";
+      el.style.display = visible ? "none" : "block";
+      if(arrow) arrow.textContent = visible ? "▼" : "▲";
+    });
+  }
 }
 
 function renderReclamosTab(){
@@ -2143,10 +2280,16 @@ function renderRecCalendar(){
       cell.classList.add("selected");
       const info = porDia[d];
       const det = document.getElementById("recCalDayDetail");
-      if(!info){ det.innerHTML = `<div class="panel-empty">Sin movimientos ese día.</div>`; return; }
+      const fecha = new Date(y, m, d);
+      const mesNombre = MESES_ORDEN[m];
+      const btnCargar = `<button class="btn btn-primary" style="margin-top:8px;font-size:12px;padding:6px 14px;" onclick="openReservaModalDia(${d}, ${y}, ${m})">+ Cargar reserva para el ${d} de ${mesNombre}</button>`;
+      if(!info){
+        det.innerHTML = `<div class="panel-empty" style="margin-bottom:0">Sin movimientos ese día.</div>${btnCargar}`;
+        return;
+      }
       det.innerHTML = info.items.map(i => `
         <div class="history-row"><span>${(i.tipoOperacion||"—")}</span><span>Móvil ${i.movil}</span><span>Reserva ${i.numeroReserva||"—"}${i.cliente?(" · "+i.cliente):""}</span></div>
-      `).join("");
+      `).join("") + btnCargar;
     });
   });
 }
@@ -2158,6 +2301,19 @@ function openReservaModal(){
   document.getElementById("reservaSede").value = "CBA";
   document.getElementById("reservaCliente").value = "";
   document.getElementById("reservaFechaInicio").value = todayISO();
+  document.getElementById("reservaFechaFin").value = "";
+  document.getElementById("reservaModalBackdrop").classList.add("open");
+}
+
+function openReservaModalDia(dia, anio, mes){
+  // Abre el modal de reserva pre-rellenado con la fecha del día clickeado
+  const pad = n => String(n).padStart(2,"0");
+  const fecha = `${anio}-${pad(mes+1)}-${pad(dia)}`;
+  document.getElementById("reservaMovil").value = "";
+  document.getElementById("reservaNumero").value = "";
+  document.getElementById("reservaSede").value = "CBA";
+  document.getElementById("reservaCliente").value = "";
+  document.getElementById("reservaFechaInicio").value = fecha;
   document.getElementById("reservaFechaFin").value = "";
   document.getElementById("reservaModalBackdrop").classList.add("open");
 }
@@ -2310,32 +2466,47 @@ function registrarReservaCalendario(payload){
 
 /* ---- Modal: cargar reclamo ---- */
 function openRecModal(prefill){
-  document.getElementById("recMovil").value = prefill?.movil || "";
+  // Móvil: si es un número, seleccionarlo en el desplegable
+  const selMovil = document.getElementById("recMovil");
+  selMovil.value = prefill?.movil ? String(prefill.movil) : "";
   document.getElementById("recNumeroReserva").value = prefill?.numeroReserva || "";
   document.getElementById("recSede").value = prefill?.sede || "CBA";
-  // Deducir tipo: si el registro histórico no tiene tipo pero sí reclamo=SI, mapearlo
-  const tipoDeducido = prefill?.tipo || (prefill?.reclamo==="SI" ? "RECLAMO" : (prefill?.reclamo==="NO" ? "SIN_NOVEDAD" : "SIN_NOVEDAD"));
+  // Mes: si se edita, tomar el mes del registro; si es nuevo, tomar el mes actual
+  document.getElementById("recMesReserva").value = prefill?.mes || MESES_ORDEN[new Date().getMonth()];
+  // Tipo: deducir de campo tipo o del campo reclamo viejo
+  const tipoDeducido = prefill?.tipo || (prefill?.reclamo==="SI" ? "RECLAMO" : "SIN_NOVEDAD");
   document.getElementById("recTipo").value = tipoDeducido;
-  document.getElementById("recCategoria").value = prefill?.categoria || "";
+  // Categoría: si coincide con alguna opción del select, elegirla; si no, poner "Otro" y escribirla abajo
+  const cat = prefill?.categoria || "";
+  const selCat = document.getElementById("recCategoriaSelect");
+  const opcionExiste = [...selCat.options].some(o => o.value === cat);
+  selCat.value = cat && !opcionExiste ? "Otro" : cat;
+  document.getElementById("recCategoria").value = (!opcionExiste && cat) ? cat : "";
   document.getElementById("recDetalle").value = prefill?.detalle || "";
   document.getElementById("recModalTitulo").textContent = prefill?.editar ? "Editar registro de reserva" : "Cargar reporte de reserva";
+  document.getElementById("recModalBackdrop").dataset.originalKey = prefill?._originalKey || "";
   document.getElementById("recModalBackdrop").classList.add("open");
 }
 function closeRecModal(){ document.getElementById("recModalBackdrop").classList.remove("open"); }
 
 function registrarReclamo(payload){
   RAW_DATA.reclamos = RAW_DATA.reclamos || [];
-  const existing = RAW_DATA.reclamos.find(r => String(r.movil)===String(payload.movil) && r.numeroReserva===payload.numeroReserva);
-  if(existing) Object.assign(existing, payload);
-  else RAW_DATA.reclamos.push(payload);
-  // Si es un reclamo real (no sin novedad), lo marca como NC abierta (sin tratar) por defecto
+  // Si viene con _originalKey (edición), buscamos por esa clave para no duplicar
+  const claveOriginal = payload._originalKey;
+  const existing = claveOriginal
+    ? RAW_DATA.reclamos.find(r => `${r.movil}|${r.numeroReserva}` === claveOriginal)
+    : RAW_DATA.reclamos.find(r => String(r.movil)===String(payload.movil) && r.numeroReserva===payload.numeroReserva);
+  const payloadLimpio = { ...payload };
+  delete payloadLimpio._originalKey;
+  if(existing) Object.assign(existing, payloadLimpio);
+  else RAW_DATA.reclamos.push(payloadLimpio);
   if(payload.reclamo === "SI" || payload.tipo === "RECLAMO"){
     const key = `${payload.movil}|${payload.numeroReserva}`;
-    STATE.ncEstados[key] = "abierta";
+    STATE.ncEstados[key] = STATE.ncEstados[key] || "abierta";
   }
   closeRecModal();
   renderReclamosTab();
-  enviarRegistro("reclamo", payload);
+  enviarRegistro("reclamo", payloadLimpio);
 }
 
 function renderAll(){
@@ -2917,12 +3088,17 @@ document.getElementById("recSubmit").addEventListener("click", () => {
   const movil = document.getElementById("recMovil").value.trim();
   const numeroReserva = document.getElementById("recNumeroReserva").value.trim();
   const sede = document.getElementById("recSede").value;
+  const mes = document.getElementById("recMesReserva").value;
   const tipo = document.getElementById("recTipo").value;
-  const categoria = document.getElementById("recCategoria").value.trim();
+  // Categoría: si eligió "Otro" o dejó el select vacío, usar el campo de texto libre
+  const catSelect = document.getElementById("recCategoriaSelect").value;
+  const catLibre = document.getElementById("recCategoria").value.trim();
+  const categoria = (catSelect === "Otro" || !catSelect) ? catLibre : catSelect;
   const detalle = document.getElementById("recDetalle").value.trim();
+  const originalKey = document.getElementById("recModalBackdrop").dataset.originalKey || null;
   if(!movil || !numeroReserva){ showToast("Completá móvil y N° de reserva.", true); return; }
   const reclamo = tipo === "RECLAMO" ? "SI" : "NO";
-  registrarReclamo({ mes:MESES_ORDEN[new Date().getMonth()], movil:Number(movil), numeroReserva, sede, tipo, reclamo, categoria, detalle });
+  registrarReclamo({ mes, movil:Number(movil), numeroReserva, sede, tipo, reclamo, categoria, detalle, _originalKey:originalKey });
 });
 
 document.getElementById("recCalPrev").addEventListener("click", () => {
